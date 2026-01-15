@@ -1,0 +1,10 @@
+.main-grid {
+  margin-top: 6px;
+}
+
+.tile-card {
+  height: 160px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
