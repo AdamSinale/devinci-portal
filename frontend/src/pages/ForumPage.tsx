@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Card, Code, Container, Group, Loader, Select, SimpleGrid, Stack, Text, TextInput, Title } from "@mantine/core";
-import { addForumEvent, getForumConstants, getFutureForumEvents, getTeamForumIdeas } from "../api/forum";
-import type { ForumConstants, ForumEvent, ForumIdea } from "../api/forum";
+import { addForumEvent, getForumSettings, getFutureForumEvents, getTeamForumIdeas } from "../api/forum";
+import type { ForumSettings, ForumEvent, ForumIdea } from "../api/forum";
 import "../styles/forumPage.css";
 
 function toLocal(iso: string) {
@@ -25,7 +25,7 @@ export default function ForumPage() {
   const [teamId, setTeamId] = useState<string>("1");
   const [ideas, setIdeas] = useState<ForumIdea[]>([]);
   const [events, setEvents] = useState<ForumEvent[]>([]);
-  const [constants, setConstants] = useState<ForumConstants | null>(null);
+  const [constants, setConstants] = useState<ForumSettings | null>(null);
 
   // add event form
   const [newName, setNewName] = useState("");
@@ -39,7 +39,7 @@ export default function ForumPage() {
       const [ideasData, eventsData, constantsData] = await Promise.all([
         getTeamForumIdeas(selectedTeamId),
         getFutureForumEvents(),
-        getForumConstants(),
+        getForumSettings(),
       ]);
       setIdeas(ideasData);
       setEvents(eventsData);

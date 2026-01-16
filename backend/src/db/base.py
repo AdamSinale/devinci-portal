@@ -4,7 +4,8 @@ from __future__ import annotations
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
-DATABASE_URL = "postgresql+asyncpg://user:password@localhost:5432/devinci"
+import os
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_async_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
 

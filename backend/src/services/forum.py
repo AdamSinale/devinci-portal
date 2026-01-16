@@ -6,8 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi import HTTPException
 
-from src.entities.forum import ForumIdea, ForumEvent, ForumConstant
-from src.routers.resultModels import AddForumEventIn, ForumConstantsOut  # לפי המבנה שלך
+from src.entities.forum.forum_idea import ForumIdea
+from src.entities.forum.forum_event import ForumEvent
+from src.entities.forum.forum_settings import ForumSettings
+from src.routers.resultModels import AddForumEventIn, ForumSettingsOut  # לפי המבנה שלך
 
 async def get_team_forum_ideas(*, db: AsyncSession, team_id: int):
     stmt = select(ForumIdea).where(ForumIdea.team_id == team_id).order_by(ForumIdea.id.desc())
@@ -20,15 +22,15 @@ async def get_future_forum_events(*, db: AsyncSession):
     res = await db.execute(stmt)
     return res.scalars().all()
 
-async def get_forum_constants(*, db: AsyncSession) -> ForumConstantsOut:
-    stmt = select(ForumConstant).order_by(ForumConstant.id.desc()).limit(1)
+async def get_forum_constants(*, db: AsyncSession) -> ForumSettingsOut:
+    stmt = select(ForumSettings).order_by(ForumSettings.id.desc()).limit(1)
     res = await db.execute(stmt)
     const = res.scalars().first()
     if not const:
         raise HTTPException(status_code=404, detail="Forum constants not found")
 
     participants = [x.strip() for x in const.participants_order_csv.split(",") if x.strip()]
-    return ForumConstantsOut(
+    return ForumSettingsOut(
         first_forum_datetime=const.first_forum_datetime,
         participants_order=participants,
     )

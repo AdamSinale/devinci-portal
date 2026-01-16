@@ -14,7 +14,7 @@ export type ForumEvent = {
   team_id: number;
 };
 
-export type ForumConstants = {
+export type ForumSettings = {
   first_forum_datetime: string;
   participants_order: string[];
 };
@@ -37,8 +37,8 @@ export async function getFutureForumEvents() {
   return res.data;
 }
 
-export async function getForumConstants() {
-  const res = await http.get<ForumConstants>("/forum/forumConstants");
+export async function getForumSettings() {
+  const res = await http.get<ForumSettings>("/forum/ForumSettings");
   return res.data;
 }
 

@@ -5,8 +5,8 @@ from typing import List
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from src.db import get_db
-from src.routers.resultModels import ForumIdeaOut, ForumEventOut, ForumConstantsOut, AddForumEventIn
+from src.db.base import get_db
+from src.routers.resultModels import ForumIdeaOut, ForumEventOut, ForumSettingsOut, AddForumEventIn
 from src.controllers.forum import (
     team_forum_ideas_controller,
     future_forum_events_controller,
@@ -27,7 +27,7 @@ async def future_forum_events(db: Session = Depends(get_db)):
     return await future_forum_events_controller(db=db)
 
 
-@router.get("/forumConstants", response_model=ForumConstantsOut)
+@router.get("/ForumSettings", response_model=ForumSettingsOut)
 async def forum_constants(db: Session = Depends(get_db)):
     return await forum_constants_controller(db=db)
 

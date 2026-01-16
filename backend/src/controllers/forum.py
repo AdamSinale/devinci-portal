@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.db import get_db
+from src.db.base import get_db
 from src.routers.resultModels import AddForumEventIn
 from src.services.forum import (
     get_team_forum_ideas,

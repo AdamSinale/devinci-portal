@@ -22,7 +22,7 @@ class ForumEventOut(BaseModel):
     class Config:
         from_attributes = True
 
-class ForumConstantsOut(BaseModel):
+class ForumSettingsOut(BaseModel):
     first_forum_datetime: datetime
     participants_order: list[str] = Field(default_factory=list)
 

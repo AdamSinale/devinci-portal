@@ -1,0 +1,20 @@
+
+from __future__ import annotations
+from datetime import datetime
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text 
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from src.entities.base import Base
+from src.entities.user.user import User
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    date_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    user: Mapped[User] = relationship(back_populates="messages")
