@@ -1,7 +1,12 @@
 from __future__ import annotations
 from datetime import datetime
+from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
+
+class SystemError(HTTPException):
+    def __init__(self, err_code: int = 500, err_detail: str = "Internal Server Error"):
+        raise HTTPException(status_code=err_code, detail=err_detail)
 
 class ForumIdeaOut(BaseModel):
     id: int

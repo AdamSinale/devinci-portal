@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from fastapi import HTTPException, Query
 from sqlalchemy import MetaData, Table, delete, insert, select, update
 from sqlalchemy.engine import Result
-from sqlalchemy.exc import NoSuchTableError
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.routers.resultModels import SystemError
 
 
 ALLOWED_TABLES = {
@@ -25,7 +24,7 @@ ALLOWED_TABLES = {
 
 async def _load_table(name: str, session: AsyncSession) -> Table:
     if name not in ALLOWED_TABLES:
-        raise HTTPException(status_code=403, detail="Table not allowed")
+        raise SystemError(403, "Table not allowed")
     md = MetaData()
     def _reflect(sync_conn):
         return Table(name, md, autoload_with=sync_conn)
@@ -34,14 +33,14 @@ async def _load_table(name: str, session: AsyncSession) -> Table:
         tbl = await session.run_sync(_reflect)
         return tbl
     except Exception:
-        raise HTTPException(status_code=404, detail="Table not found")
+        raise SystemError(404, "Table not found")
 
 def _get_pk_column(table: Table):
     pk_cols = list(table.primary_key.columns)
     if not pk_cols:
-        raise HTTPException(status_code=400, detail="Table has no primary key (not supported)")
+        raise SystemError(400, "Table has no primary key (not supported)")
     if len(pk_cols) != 1:
-        raise HTTPException(status_code=400, detail="Composite PK not supported in this simple admin")
+        raise SystemError(400, "Composite PK not supported in this simple admin")
     return pk_cols[0]
 
 def _serialize_row(row: Any) -> Dict[str, Any]:
@@ -97,7 +96,7 @@ async def update_row_service(table: str, row_id: str, payload: Dict[str, Any], d
     res = await db.execute(stmt)
     updated = res.fetchone()
     if not updated:
-        raise HTTPException(status_code=404, detail="Row not found")
+        raise SystemError(404, "Row not found")
 
     await db.commit()
     return {"item": _serialize_row(updated)}
@@ -110,7 +109,7 @@ async def delete_row_service(table: str, row_id: str, db: AsyncSession) -> Dict[
     res = await db.execute(stmt)
     deleted = res.fetchone()
     if not deleted:
-        raise HTTPException(status_code=404, detail="Row not found")
+        raise SystemError(404, "Row not found")
 
     await db.commit()
     return {"deleted": True, "id": row_id}

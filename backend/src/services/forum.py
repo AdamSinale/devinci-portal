@@ -4,8 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from fastapi import HTTPException
-
+from src.routers.resultModels import SystemError
 from src.entities.forum.forum_idea import ForumIdea
 from src.entities.forum.forum_event import ForumEvent
 from src.entities.forum.forum_settings import ForumSettings
@@ -27,7 +26,7 @@ async def get_forum_constants(*, db: AsyncSession) -> ForumSettingsOut:
     res = await db.execute(stmt)
     const = res.scalars().first()
     if not const:
-        raise HTTPException(status_code=404, detail="Forum constants not found")
+        raise SystemError(404, "Forum constants not found")
 
     participants = [x.strip() for x in const.participants_order_csv.split(",") if x.strip()]
     return ForumSettingsOut(
