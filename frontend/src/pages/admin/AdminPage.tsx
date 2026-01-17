@@ -1,208 +1,169 @@
 import { useEffect, useMemo, useState } from "react";
-import axios from "axios";
-import { ActionIcon, Button, Card, Group, Modal, NumberInput, Select, Stack, Table, Text, TextInput, Title } from "@mantine/core";
-import { IconPlus, IconTrash, IconEdit } from "@tabler/icons-react";
-
-type Column = {
-  name: string;
-  nullable: boolean;
-  primary_key: boolean;
-  type: string;
-};
-
-type Schema = {
-  table: string;
-  primary_key: string;
-  columns: Column[];
-};
-
-type RowData = Record<string, any>;
-
-const api = axios.create({
-  baseURL: import.meta.env.VITE_PROXY_TARGET ?? "http://localhost:8000",
-});
+import {
+  Alert,
+  Button,
+  Card,
+  Container,
+  Group,
+  Loader,
+  Select,
+  Stack,
+  Table,
+  Text,
+  Title,
+} from "@mantine/core";
+import { getAdminTables, getAdminTableRows } from "../../api/admin";
 
 export default function AdminPage() {
   const [tables, setTables] = useState<string[]>([]);
-  const [table, setTable] = useState<string | null>(null);
-  const [schema, setSchema] = useState<Schema | null>(null);
-  const [rows, setRows] = useState<RowData[]>([]);
-  const [limit, setLimit] = useState<number>(50);
-  const [offset, setOffset] = useState<number>(0);
+  const [selectedTable, setSelectedTable] = useState<string | null>(null);
 
-  const [opened, setOpened] = useState(false);
-  const [mode, setMode] = useState<"create" | "edit">("create");
-  const [draft, setDraft] = useState<RowData>({});
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [rows, setRows] = useState<Record<string, any>[]>([]);
+  const [loadingTables, setLoadingTables] = useState(true);
+  const [loadingRows, setLoadingRows] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const tableOptions = useMemo(
+    () => tables.map((t) => ({ value: t, label: t })),
+    [tables],
+  );
+
+  const columns = useMemo(() => {
+    const first = rows[0];
+    if (!first) return [];
+    return Object.keys(first);
+  }, [rows]);
+
+  async function loadTables() {
+    setErr(null);
+    setLoadingTables(true);
+    try {
+      const t = await getAdminTables();
+      setTables(t);
+      setSelectedTable((prev) => prev ?? t[0] ?? null);
+    } catch (e: any) {
+      setErr(e?.response?.data?.detail ?? e?.message ?? "Failed to load tables");
+    } finally {
+      setLoadingTables(false);
+    }
+  }
+
+  async function loadRows(table: string) {
+    setErr(null);
+    setLoadingRows(true);
+    try {
+      const res = await getAdminTableRows(table, 50, 0);
+      setRows(res.items ?? []);
+    } catch (e: any) {
+      setErr(e?.response?.data?.detail ?? e?.message ?? "Failed to load rows");
+      setRows([]);
+    } finally {
+      setLoadingRows(false);
+    }
+  }
 
   useEffect(() => {
-    api.get("/api/admin/tables").then((r) => setTables(r.data));
+    void loadTables();
   }, []);
 
   useEffect(() => {
-    if (!table) return;
-    api.get(`/api/admin/tables/${table}/schema`).then((r) => {
-      setSchema(r.data);
-      setDraft({});
-      setOffset(0);
-    });
-  }, [table]);
-
-  useEffect(() => {
-    if (!table) return;
-    api
-      .get(`/api/admin/tables/${table}/rows`, { params: { limit, offset } })
-      .then((r) => setRows(r.data.items));
-  }, [table, limit, offset]);
-
-  const columns = useMemo(() => schema?.columns ?? [], [schema]);
-  const pk = schema?.primary_key;
-
-  function openCreate() {
-    setMode("create");
-    setEditingId(null);
-    setDraft({});
-    setOpened(true);
-  }
-
-  function openEdit(row: RowData) {
-    setMode("edit");
-    const id = pk ? String(row[pk]) : null;
-    setEditingId(id);
-    setDraft({ ...row });
-    setOpened(true);
-  }
-
-  async function submit() {
-    if (!table || !schema) return;
-
-    if (mode === "create") {
-      await api.post(`/api/admin/tables/${table}/rows`, draft);
-    } else {
-      if (!editingId) return;
-      await api.patch(`/api/admin/tables/${table}/rows/${editingId}`, draft);
-    }
-
-    // refresh
-    const r = await api.get(`/api/admin/tables/${table}/rows`, { params: { limit, offset } });
-    setRows(r.data.items);
-    setOpened(false);
-  }
-
-  async function removeRow(row: RowData) {
-    if (!table || !pk) return;
-    const id = String(row[pk]);
-    await api.delete(`/api/admin/tables/${table}/rows/${id}`);
-
-    const r = await api.get(`/api/admin/tables/${table}/rows`, { params: { limit, offset } });
-    setRows(r.data.items);
-  }
+    if (!selectedTable) return;
+    void loadRows(selectedTable);
+  }, [selectedTable]);
 
   return (
-    <Stack p="md" gap="md">
-      <Title order={1} fw={900}>Admin</Title>
+    <Container size="lg" py="md">
+      <Stack gap="md">
+        <Group justify="space-between" align="center">
+          <div>
+            <Title order={2}>Admin</Title>
+            <Text c="dimmed" size="sm">
+              Browse allowed tables and inspect rows.
+            </Text>
+          </div>
 
-      <Card withBorder radius="md" p="md">
-        <Group justify="space-between" align="flex-end">
-          <Select
-            label="Table"
-            placeholder="Choose a table"
-            data={tables}
-            value={table}
-            onChange={setTable}
-            searchable
-            w={320}
-          />
-
-          <Group>
-            <NumberInput
-              label="Limit"
-              value={limit}
-              onChange={(v) => setLimit(Number(v) || 50)}
-              min={1}
-              max={200}
-              w={140}
-            />
-            <NumberInput
-              label="Offset"
-              value={offset}
-              onChange={(v) => setOffset(Number(v) || 0)}
-              min={0}
-              w={140}
-            />
-            <Button leftSection={<IconPlus size={16} />} onClick={openCreate} disabled={!table}>
-              Add row
-            </Button>
-          </Group>
+          <Button
+            variant="light"
+            onClick={() => {
+              if (selectedTable) void loadRows(selectedTable);
+              else void loadTables();
+            }}
+            disabled={loadingTables || loadingRows}
+          >
+            Refresh
+          </Button>
         </Group>
-      </Card>
 
-      {!table ? (
-        <Text c="dimmed">Pick a table to manage.</Text>
-      ) : (
+        {err && (
+          <Alert color="red" title="Error">
+            {err}
+          </Alert>
+        )}
+
         <Card withBorder radius="md" p="md">
-          <Table striped highlightOnHover withTableBorder>
-            <Table.Thead>
-              <Table.Tr>
-                {columns.map((c) => (
-                  <Table.Th key={c.name}>
-                    {c.name}
-                    {c.primary_key ? " (PK)" : ""}
-                  </Table.Th>
-                ))}
-                <Table.Th style={{ width: 120 }}>Actions</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
+          <Group justify="space-between" align="flex-end">
+            <Select
+              label="Table"
+              placeholder={loadingTables ? "Loading..." : "Pick a table"}
+              data={tableOptions}
+              value={selectedTable}
+              onChange={setSelectedTable}
+              searchable
+              nothingFoundMessage="No tables"
+              disabled={loadingTables}
+              w={320}
+            />
 
-            <Table.Tbody>
-              {rows.map((r, idx) => (
-                <Table.Tr key={idx}>
-                  {columns.map((c) => (
-                    <Table.Td key={c.name}>{String(r[c.name] ?? "")}</Table.Td>
-                  ))}
-                  <Table.Td>
-                    <Group gap="xs">
-                      <ActionIcon variant="light" onClick={() => openEdit(r)}>
-                        <IconEdit size={16} />
-                      </ActionIcon>
-                      <ActionIcon color="red" variant="light" onClick={() => removeRow(r)}>
-                        <IconTrash size={16} />
-                      </ActionIcon>
-                    </Group>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Card>
-      )}
-
-      <Modal
-        opened={opened}
-        onClose={() => setOpened(false)}
-        title={mode === "create" ? "Create row" : "Edit row"}
-        size="lg"
-      >
-        <Stack>
-          {columns.map((c) => {
-            const isPk = c.primary_key;
-            return (
-              <TextInput
-                key={c.name}
-                label={`${c.name} (${c.type})`}
-                value={draft[c.name] ?? ""}
-                onChange={(e) => setDraft((d) => ({ ...d, [c.name]: e.currentTarget.value }))}
-                disabled={mode === "edit" && isPk}
-              />
-            );
-          })}
-
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setOpened(false)}>Cancel</Button>
-            <Button onClick={submit}>{mode === "create" ? "Create" : "Save"}</Button>
+            {(loadingTables || loadingRows) && <Loader size="sm" />}
           </Group>
-        </Stack>
-      </Modal>
-    </Stack>
+
+          <div style={{ marginTop: 16 }}>
+            {!selectedTable ? (
+              <Text c="dimmed">No table selected.</Text>
+            ) : loadingRows ? (
+              <Group>
+                <Loader size="sm" />
+                <Text c="dimmed">Loading rows...</Text>
+              </Group>
+            ) : rows.length === 0 ? (
+              <Text c="dimmed">No rows found.</Text>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <Table striped highlightOnHover withTableBorder withColumnBorders>
+                  <Table.Thead>
+                    <Table.Tr>
+                      {columns.map((col) => (
+                        <Table.Th key={col}>{col}</Table.Th>
+                      ))}
+                    </Table.Tr>
+                  </Table.Thead>
+
+                  <Table.Tbody>
+                    {rows.map((r, idx) => (
+                      <Table.Tr key={idx}>
+                        {columns.map((col) => (
+                          <Table.Td key={col}>
+                            <Text size="sm" lineClamp={2}>
+                              {formatCell(r[col])}
+                            </Text>
+                          </Table.Td>
+                        ))}
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </div>
+            )}
+          </div>
+        </Card>
+      </Stack>
+    </Container>
   );
+}
+
+function formatCell(v: any) {
+  if (v === null || v === undefined) return "—";
+  if (typeof v === "boolean") return v ? "true" : "false";
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
 }
