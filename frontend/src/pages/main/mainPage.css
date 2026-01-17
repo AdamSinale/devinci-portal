@@ -1,0 +1,42 @@
+.dashWrap {
+  position: relative;
+  padding: 24px;
+}
+
+.adminBtn {
+  position: absolute;
+  left: 24px;
+  top: 24px;
+  z-index: 10;
+}
+
+.dashGrid {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 200px;
+
+  grid-template-areas:
+    "events   messages  forum     cleaning"
+    "updates  teams     teams     gallery";
+}
+
+.teamsPanel {
+  height: 100%;
+  overflow: auto;
+}
+
+.teamCard {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.tile {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}

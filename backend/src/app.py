@@ -1,6 +1,6 @@
 
 from fastapi import FastAPI
-from src.routers.forum import router as forum_router
+from src.routers.main import main_router
 from contextlib import asynccontextmanager
 from src.db.init import init_db
 
@@ -11,5 +11,5 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="DevInci Portal API", lifespan=lifespan)
 
-app.include_router(forum_router)
+app.include_router(main_router)
 

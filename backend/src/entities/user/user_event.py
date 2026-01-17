@@ -1,11 +1,13 @@
 
 from __future__ import annotations
 from datetime import datetime
+from typing import TYPE_CHECKING
 from sqlalchemy import DateTime, ForeignKey, Integer, String 
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, relationship, mapped_column  # mapped_column newer,better than Column (defines python type, defines DB column)
 
 from src.entities.base import Base
-from backend.src.entities.user.user import User
+if TYPE_CHECKING:
+    from src.entities.user.user import User
 
 
 class UserEvent(Base):
@@ -18,4 +20,4 @@ class UserEvent(Base):
     start_date_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_date_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
-    user: Mapped[User] = relationship(back_populates="user_events")
+    user: Mapped["User"] = relationship(back_populates="user_events")

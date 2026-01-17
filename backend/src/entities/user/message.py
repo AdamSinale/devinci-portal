@@ -1,11 +1,13 @@
 
 from __future__ import annotations
 from datetime import datetime
+from typing import TYPE_CHECKING
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text 
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, relationship, mapped_column  # mapped_column newer,better than Column (defines python type, defines DB column)
 
 from src.entities.base import Base
-from src.entities.user.user import User
+if TYPE_CHECKING:
+    from src.entities.user.user import User
 
 class Message(Base):
     __tablename__ = "messages"
@@ -17,4 +19,4 @@ class Message(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     date_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
-    user: Mapped[User] = relationship(back_populates="messages")
+    user: Mapped["User"] = relationship(back_populates="messages")
