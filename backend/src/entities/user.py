@@ -8,29 +8,29 @@ from sqlalchemy.orm import Mapped, relationship, mapped_column
 from src.entities.base import Base
 
 if TYPE_CHECKING:
-    from src.entities.team.team import Team
-    from src.entities.user.role import Role
-    from src.entities.user.message import Message
-    from src.entities.user.user_event import UserEvent
-    from src.entities.user.user_role import UserRole
-    from src.entities.forum.forum_idea import ForumIdea
+    from src.entities.team import Team
+    from src.entities.role import Role
+    from src.entities.message import Message
+    from src.entities.user_event import UserEvent
+    from src.entities.user_role import UserRole
+    from src.entities.forum_idea import ForumIdea
 
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    t_name: Mapped[str] = mapped_column(String(20), primary_key=True)
+    name: Mapped[str] = mapped_column(String(20), nullable=False)
 
     birthday: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     release_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     joined_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
 
-    team_id: Mapped[Optional[int]] = mapped_column(ForeignKey("teams.id", ondelete="SET NULL"), nullable=True)
-    # user.team.name (SQLAlchemy does SELECT * FROM users JOIN teams ON users.team_id = teams.id;)
+    team_name: Mapped[Optional[str]] = mapped_column(ForeignKey("teams.name", ondelete="SET NULL"), nullable=True)
+    # user.team.name (SQLAlchemy does SELECT * FROM users JOIN teams ON users.team_name = teams.name;)
     team: Mapped[Optional["Team"]] = relationship(back_populates="users")
     # linking table: users <-- user_roles --> roles
     roles_link: Mapped[List["UserRole"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    # SELECT roles.* FROM roles JOIN user_roles ON user_roles.role_id = roles.id WHERE user_roles.user_id = ?
+    # SELECT roles.* FROM roles JOIN user_roles ON user_roles.role_name = roles.name WHERE user_roles.user_t_name = ?
     roles: Mapped[List["Role"]] = relationship(secondary="user_roles", back_populates="users", viewonly=True)
 
     messages: Mapped[List["Message"]] = relationship(back_populates="user")

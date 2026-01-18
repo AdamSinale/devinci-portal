@@ -1,15 +1,15 @@
 import { Alert, Card, Group, Loader, Stack, Text } from "@mantine/core";
-import { getFutureForumEvents } from "../../../api/forum";
-import type { ForumEvent } from "../../../api/forum";
-import { useAsync } from "../../components/handlers";
+import { getFutureForumSchedule  } from "../../api/forum";
+import type { ForumScheduleItem  } from "../../api/forum";
+import { useAsync } from "../components/handlers";
 
 function toLocal(iso: string) {
   return new Date(iso).toLocaleString();
 }
 
 export default function EventsPanel() {
-  const { data, loading, err, reload } = useAsync<ForumEvent[]>(
-    () => getFutureForumEvents(),
+  const { data, loading, err, reload } = useAsync<ForumScheduleItem[]>(
+    () => getFutureForumSchedule(),
     []
   );
 
@@ -35,7 +35,7 @@ export default function EventsPanel() {
                 <Text size="sm" fw={600}>{ev.name}</Text>
                 <Text size="sm">{toLocal(ev.date_time)}</Text>
                 <Text size="xs" c="dimmed">
-                  team_id={ev.team_id} • event_id={ev.id}
+                  team_name={ev.team_name} • event_id={ev.id}
                 </Text>
               </Card>
             ))

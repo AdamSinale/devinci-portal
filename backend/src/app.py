@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from src.routers.main import main_router
 
 from src.entities.base import Base
-from src.entities.user.user import User 
+from src.entities.user import User 
 import os
 
 DATABASE_URL = os.getenv(
@@ -29,7 +29,7 @@ async def init_db_and_seed() -> None:
         if existing:
             return
 
-        session.add(User(id = 1, name="adam sin", birthday=date(2004,2,2), release_date=date(2031,10,18), joined_date=date(2025,10,14)))
+        session.add(User(t_name = "t_adam_si", name="adam sin", birthday=date(2004,2,2), release_date=date(2031,10,18), joined_date=date(2025,10,14)))
         await session.commit()
 
 @asynccontextmanager

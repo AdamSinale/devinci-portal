@@ -1,34 +1,31 @@
-from fastapi import HTTPException
+from datetime import datetime
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.entities.user.user import User
+from src.routers.system_error import SystemError
+from src.entities.user import User
 
-async def login_service(db: AsyncSession, payload: dict):
-    user_id = payload.get("id")
-    name = payload.get("name")
+class LoginIn(BaseModel):
+    name: str
 
-    if user_id is None and (not name or not str(name).strip()):
-        raise HTTPException(400, "Send {id} or {name}")
+class LoginResult(BaseModel):
+    name: str
+    team_name: str|None
+    release_date: datetime
 
-    if user_id is not None:
-        try:
-            user_id = int(user_id)
-        except ValueError:
-            raise HTTPException(400, "Invalid id")
+async def login_service(db: AsyncSession, payload: LoginIn) -> LoginResult:
+    name = payload.name
+    if not name or not str(name).strip():
+        raise SystemError(400, "Send {t_name} or {name}")
 
-        user = await db.get(User, user_id)
-    else:
-        name = str(name).strip()
+    name = str(name).strip()
+    user = await db.get(User, name)
+    if user is None:
         res = await db.execute(select(User).where(User.name == name))
         user = res.scalars().first()
 
     if not user:
-        raise HTTPException(401, "User not found")
+        raise SystemError(401, "User not found")
 
-    return {
-        "user": {
-            "id": user.id,
-            "name": user.name,
-        }
-    }
+    return LoginResult(name=user.t_name, team_name=user.team_name, release_date=user.release_date)

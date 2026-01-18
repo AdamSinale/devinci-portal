@@ -15,7 +15,7 @@ export default function ForumPage() {
         </Group>
 
         <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
-          <IdeasPanel teamId={1} />
+          <IdeasPanel />
           <EventsPanel />
         </SimpleGrid>
       </Container>

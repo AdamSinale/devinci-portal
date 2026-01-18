@@ -3,27 +3,41 @@ import { http } from "./http";
 export type ForumIdea = {
   id: number;
   idea: string;
-  user_id: number;
-  team_id: number;
+  user_t_name: string;
+  team_name: string;
 };
 
 export type ForumEvent = {
   id: number;
   name: string;
   date_time: string;
-  team_id: number;
+  team_name: string;
 };
 
 export type AddForumEventIn = {
   name: string;
   date_time: string;
-  team_id: number;
+  team_name: string;
 };
 
-export async function getTeamForumIdeas(teamId: number) {
+export type ForumScheduleItem = {
+  id: number | null;
+  name: string;
+  date_time: string;
+  team_name: string;
+  minute_length: number;
+  source: "generated" | "override";
+};
+
+export async function getTeamForumIdeas(teamName: string) {
   const res = await http.get<ForumIdea[]>("/forum/teamForumIdeas", {
-    params: { team_id: teamId },
+    params: { team_name: teamName },
   });
+  return res.data;
+}
+
+export async function getFutureForumSchedule() {
+  const res = await http.get<ForumScheduleItem[]>("/forum/futureForumSchedule");
   return res.data;
 }
 

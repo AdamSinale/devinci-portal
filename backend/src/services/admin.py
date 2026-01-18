@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
-from fastapi import HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,22 +18,20 @@ try:
 except Exception:  # pragma: no cover
     ARRAY = None  # fallback
 
-# === Import your ORM models ===
-from src.entities.user.user import User
-from src.entities.user.role import Role
-from src.entities.user.user_role import UserRole
-from src.entities.user.user_event import UserEvent
-from src.entities.user.message import Message
+from src.entities.user import User
+from src.entities.role import Role
+from src.entities.user_role import UserRole
+from src.entities.user_event import UserEvent
+from src.entities.message import Message
 
-from src.entities.team.team import Team
-from src.entities.team.team_link import TeamLink
+from src.entities.team import Team
+from src.entities.team_link import TeamLink
 
-from src.entities.forum.forum_event import ForumEvent
-from src.entities.forum.forum_idea import ForumIdea
-from src.entities.forum.forum_settings import ForumSettings
+from src.entities.forum_event import ForumEvent
+from src.entities.forum_idea import ForumIdea
+from src.entities.forum_settings import ForumSettings
+from src.routers.system_error import SystemError
 
-
-# ✅ Simple allowlist mapping (not a registry framework, just a dict)
 ENTITY_MODELS: Dict[str, Any] = {
     "users": User,
     "roles": Role,
@@ -52,7 +49,7 @@ ENTITY_MODELS: Dict[str, Any] = {
 def _get_model(entity: str):
     Model = ENTITY_MODELS.get(entity)
     if not Model:
-        raise HTTPException(404, "Unknown entity")
+        raise SystemError(404, "Unknown entity")
     return Model
 
 
@@ -71,7 +68,7 @@ def _parse_row_id(pk_cols: List[Any], row_id: str) -> Dict[str, Any]:
 
     parts = row_id.split(":")
     if len(parts) != len(pk_cols):
-        raise HTTPException(400, f"Composite id must have {len(pk_cols)} parts joined by ':'")
+        raise SystemError(400, f"Composite id must have {len(pk_cols)} parts joined by ':'")
 
     return {pk_cols[i].name: parts[i] for i in range(len(pk_cols))}
 
@@ -91,8 +88,8 @@ def _coerce_scalar(col_type: Any, v: Any, col_name: str) -> Any:
             try:
                 return int(s)
             except ValueError:
-                raise HTTPException(400, f"Invalid integer for '{col_name}'")
-        raise HTTPException(400, f"Invalid integer for '{col_name}'")
+                raise SystemError(400, f"Invalid integer for '{col_name}'")
+        raise SystemError(400, f"Invalid integer for '{col_name}'")
 
     # bool
     if isinstance(col_type, Boolean):
@@ -106,7 +103,7 @@ def _coerce_scalar(col_type: Any, v: Any, col_name: str) -> Any:
                 return False
             if s == "":
                 return None
-        raise HTTPException(400, f"Invalid boolean for '{col_name}'")
+        raise SystemError(400, f"Invalid boolean for '{col_name}'")
 
     # date
     if isinstance(col_type, Date):
@@ -119,8 +116,8 @@ def _coerce_scalar(col_type: Any, v: Any, col_name: str) -> Any:
             try:
                 return date.fromisoformat(s)  # YYYY-MM-DD
             except ValueError:
-                raise HTTPException(400, f"Invalid date for '{col_name}' (expected YYYY-MM-DD)")
-        raise HTTPException(400, f"Invalid date for '{col_name}'")
+                raise SystemError(400, f"Invalid date for '{col_name}' (expected YYYY-MM-DD)")
+        raise SystemError(400, f"Invalid date for '{col_name}'")
 
     # datetime
     if isinstance(col_type, DateTime):
@@ -134,8 +131,8 @@ def _coerce_scalar(col_type: Any, v: Any, col_name: str) -> Any:
             try:
                 return datetime.fromisoformat(s)
             except ValueError:
-                raise HTTPException(400, f"Invalid datetime for '{col_name}' (expected ISO format)")
-        raise HTTPException(400, f"Invalid datetime for '{col_name}'")
+                raise SystemError(400, f"Invalid datetime for '{col_name}' (expected ISO format)")
+        raise SystemError(400, f"Invalid datetime for '{col_name}'")
 
     # default: leave as-is
     return v
@@ -165,7 +162,7 @@ def _coerce_value(col, v: Any) -> Any:
                 out.append(_coerce_scalar(item_t, item, f"{col.name}[{i}]"))
             return out
 
-        raise HTTPException(400, f"Invalid array for '{col.name}' (expected list or comma-separated string)")
+        raise SystemError(400, f"Invalid array for '{col.name}' (expected list or comma-separated string)")
 
     return _coerce_scalar(col_type, v, col.name)
 
@@ -233,7 +230,7 @@ async def create_row_service(db: AsyncSession, entity: str, payload: Dict[str, A
         await db.commit()
     except Exception as e:
         await db.rollback()
-        raise HTTPException(400, f"Create failed: {str(e)}")
+        raise SystemError(400, f"Create failed: {str(e)}")
 
     # refresh for generated PK/defaults
     try:
@@ -258,7 +255,7 @@ async def update_row_service(db: AsyncSession, entity: str, row_id: str, payload
 
     obj = await db.get(Model, key if len(pk_cols) > 1 else list(key.values())[0])
     if not obj:
-        raise HTTPException(404, "Row not found")
+        raise SystemError(404, "Row not found")
 
     data = _clean_payload(Model, payload)
 
@@ -273,7 +270,7 @@ async def update_row_service(db: AsyncSession, entity: str, row_id: str, payload
         await db.commit()
     except Exception as e:
         await db.rollback()
-        raise HTTPException(400, f"Update failed: {str(e)}")
+        raise SystemError(400, f"Update failed: {str(e)}")
 
     try:
         await db.refresh(obj)
@@ -295,13 +292,13 @@ async def delete_row_service(db: AsyncSession, entity: str, row_id: str) -> Dict
 
     obj = await db.get(Model, key if len(pk_cols) > 1 else list(key.values())[0])
     if not obj:
-        raise HTTPException(404, "Row not found")
+        raise SystemError(404, "Row not found")
 
     await db.delete(obj)
     try:
         await db.commit()
     except Exception as e:
         await db.rollback()
-        raise HTTPException(400, f"Delete failed: {str(e)}")
+        raise SystemError(400, f"Delete failed: {str(e)}")
 
     return {"deleted": True, "id": row_id}

@@ -14,10 +14,10 @@ export default function MainPage() {
   ];
 
   const teams = [
-    { id: 1, name: "Team 1" },
-    { id: 2, name: "Team 2" },
-    { id: 3, name: "Team 3" },
-    { id: 4, name: "Team 4" },
+    { name: "Team 1" },
+    { name: "Team 2" },
+    { name: "Team 3" },
+    { name: "Team 4" },
   ];
 
   return (
@@ -42,9 +42,9 @@ export default function MainPage() {
             Teams
           </Text>
 
-          <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="sm" verticalSpacing="sm">
+          <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm" verticalSpacing="sm">
             {teams.map((t) => (
-              <Card key={t.id} component={Link} to={`/teams/${t.id}`} withBorder radius="md" p="md" className="teamCard">
+              <Card key={t.name} component={Link} to={`/teams/${t.name}`} withBorder radius="md" p="md" className="teamCard">
                 <Text fw={700}>{t.name}</Text>
                 <Text size="xs" c="dimmed">
                   Open →

@@ -2,11 +2,11 @@ import { useParams } from "react-router-dom";
 import { Container, Title, Text, Card } from "@mantine/core";
 
 export default function TeamPage() {
-  const { teamId } = useParams();
+  const { teamName } = useParams();
 
   return (
     <Container size="lg" py="xl">
-      <Title order={2}>Team {teamId}</Title>
+      <Title order={2}>{teamName}</Title>
       <Text c="dimmed" mb="lg">
         This page intentionally does NOT use PortalShell.
       </Text>

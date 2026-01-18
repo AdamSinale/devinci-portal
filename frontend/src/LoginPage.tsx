@@ -33,8 +33,7 @@ export default function LoginPage() {
           <Title order={2}>Login</Title>
           {err && <Alert color="red">{err}</Alert>}
           <TextInput
-            label="Name"
-            placeholder="e.g. Idan Gabay"
+            label="t_name"
             value={name}
             onChange={(e) => setName(e.currentTarget.value)}
           />
