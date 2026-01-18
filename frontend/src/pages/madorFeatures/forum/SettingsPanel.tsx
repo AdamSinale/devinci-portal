@@ -26,7 +26,7 @@ export default function SettingsPanel() {
             <b>First forum:</b> {toLocal(data.first_forum_datetime)}
           </Text>
           <Text size="sm">
-            <b>Order:</b> {data.participants_order.join(" → ")}
+            <b>Order:</b> {data.teams_order.join(" → ")}
           </Text>
         </Stack>
       )}

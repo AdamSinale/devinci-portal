@@ -1,115 +1,307 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from datetime import date, datetime
+from typing import Any, Dict, List, Tuple
 
-from sqlalchemy import MetaData, Table, delete, insert, select, update
+from fastapi import HTTPException
+from sqlalchemy import select, func
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.routers.resultModels import SystemError
+from sqlalchemy.inspection import inspect
+from sqlalchemy.sql.sqltypes import (
+    Integer, BigInteger, SmallInteger,
+    Boolean, Date, DateTime
+)
+
+try:
+    # Postgres ARRAY type (for int[] etc.)
+    from sqlalchemy.dialects.postgresql import ARRAY  # type: ignore
+except Exception:  # pragma: no cover
+    ARRAY = None  # fallback
+
+# === Import your ORM models ===
+from src.entities.user.user import User
+from src.entities.user.role import Role
+from src.entities.user.user_role import UserRole
+from src.entities.user.user_event import UserEvent
+from src.entities.user.message import Message
+
+from src.entities.team.team import Team
+from src.entities.team.team_link import TeamLink
+
+from src.entities.forum.forum_event import ForumEvent
+from src.entities.forum.forum_idea import ForumIdea
+from src.entities.forum.forum_settings import ForumSettings
 
 
-ALLOWED_TABLES = {
-    "forum_ideas",
-    "forum_events",
-    "forum_settings",
-    "team_links",
-    "teams",
-    "users",
-    "user_roles",
-    "roles",
-    "user_events",
-    "messages",
+# ✅ Simple allowlist mapping (not a registry framework, just a dict)
+ENTITY_MODELS: Dict[str, Any] = {
+    "users": User,
+    "roles": Role,
+    "user_roles": UserRole,
+    "user_events": UserEvent,
+    "messages": Message,
+    "teams": Team,
+    "team_links": TeamLink,
+    "forum_events": ForumEvent,
+    "forum_ideas": ForumIdea,
+    "forum_settings": ForumSettings,
 }
 
 
-async def _load_table(name: str, session: AsyncSession) -> Table:
-    if name not in ALLOWED_TABLES:
-        raise SystemError(403, "Table not allowed")
-    md = MetaData()
-    def _reflect(sync_conn):
-        return Table(name, md, autoload_with=sync_conn)
+def _get_model(entity: str):
+    Model = ENTITY_MODELS.get(entity)
+    if not Model:
+        raise HTTPException(404, "Unknown entity")
+    return Model
+
+
+def _pk_columns(Model) -> List[Any]:
+    mapper = inspect(Model)
+    return list(mapper.primary_key)
+
+
+def _parse_row_id(pk_cols: List[Any], row_id: str) -> Dict[str, Any]:
+    """
+    - Single PK: row_id="123"
+    - Composite PK: row_id="12:5" (in the same pk columns order)
+    """
+    if len(pk_cols) == 1:
+        return {pk_cols[0].name: row_id}
+
+    parts = row_id.split(":")
+    if len(parts) != len(pk_cols):
+        raise HTTPException(400, f"Composite id must have {len(pk_cols)} parts joined by ':'")
+
+    return {pk_cols[i].name: parts[i] for i in range(len(pk_cols))}
+
+
+def _coerce_scalar(col_type: Any, v: Any, col_name: str) -> Any:
+    if v is None:
+        return None
+
+    # ints
+    if isinstance(col_type, (Integer, BigInteger, SmallInteger)):
+        if isinstance(v, int):
+            return v
+        if isinstance(v, str):
+            s = v.strip()
+            if s == "":
+                return None
+            try:
+                return int(s)
+            except ValueError:
+                raise HTTPException(400, f"Invalid integer for '{col_name}'")
+        raise HTTPException(400, f"Invalid integer for '{col_name}'")
+
+    # bool
+    if isinstance(col_type, Boolean):
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            s = v.strip().lower()
+            if s in ("true", "1", "yes", "y", "on"):
+                return True
+            if s in ("false", "0", "no", "n", "off"):
+                return False
+            if s == "":
+                return None
+        raise HTTPException(400, f"Invalid boolean for '{col_name}'")
+
+    # date
+    if isinstance(col_type, Date):
+        if isinstance(v, date) and not isinstance(v, datetime):
+            return v
+        if isinstance(v, str):
+            s = v.strip()
+            if s == "":
+                return None
+            try:
+                return date.fromisoformat(s)  # YYYY-MM-DD
+            except ValueError:
+                raise HTTPException(400, f"Invalid date for '{col_name}' (expected YYYY-MM-DD)")
+        raise HTTPException(400, f"Invalid date for '{col_name}'")
+
+    # datetime
+    if isinstance(col_type, DateTime):
+        if isinstance(v, datetime):
+            return v
+        if isinstance(v, str):
+            s = v.strip()
+            if s == "":
+                return None
+            # Accept ISO; allow "YYYY-MM-DDTHH:MM" etc.
+            try:
+                return datetime.fromisoformat(s)
+            except ValueError:
+                raise HTTPException(400, f"Invalid datetime for '{col_name}' (expected ISO format)")
+        raise HTTPException(400, f"Invalid datetime for '{col_name}'")
+
+    # default: leave as-is
+    return v
+
+
+def _coerce_value(col, v: Any) -> Any:
+    col_type = col.type
+
+    # Postgres arrays, e.g. INTEGER[]
+    if ARRAY is not None and isinstance(col_type, ARRAY):
+        item_t = col_type.item_type
+
+        # Accept "1,2,3" as string
+        if isinstance(v, str):
+            s = v.strip()
+            if s == "":
+                return None
+            parts = [p.strip() for p in s.split(",") if p.strip() != ""]
+            v = parts
+
+        if isinstance(v, (list, tuple)):
+            out = []
+            for i, item in enumerate(v):
+                # guard against buggy ["1", ",", "2"...]
+                if isinstance(item, str) and item.strip() == ",":
+                    continue
+                out.append(_coerce_scalar(item_t, item, f"{col.name}[{i}]"))
+            return out
+
+        raise HTTPException(400, f"Invalid array for '{col.name}' (expected list or comma-separated string)")
+
+    return _coerce_scalar(col_type, v, col.name)
+
+
+def _serialize(obj) -> Dict[str, Any]:
+    """
+    Serialize only table columns (not relationships).
+    """
+    out: Dict[str, Any] = {}
+    for c in obj.__table__.columns:
+        out[c.name] = getattr(obj, c.name)
+    return out
+
+
+def _clean_payload(Model, payload: Dict[str, Any]) -> Dict[str, Any]:
+    cols = {c.name: c for c in Model.__table__.columns}
+    out: Dict[str, Any] = {}
+
+    for k, v in payload.items():
+        if k not in cols:
+            continue
+        col = cols[k]
+        vv = _coerce_value(col, v)
+
+        # if nullable and empty -> null
+        if vv == "" and getattr(col, "nullable", False):
+            vv = None
+
+        out[k] = vv
+
+    return out
+
+
+async def list_entities_service() -> Dict[str, Any]:
+    return {"entities": sorted(list(ENTITY_MODELS.keys()))}
+
+
+async def list_rows_service(db: AsyncSession, entity: str, limit: int, offset: int) -> Dict[str, Any]:
+    Model = _get_model(entity)
+
+    stmt = select(Model).limit(limit).offset(offset)
+    res: Result = await db.execute(stmt)
+    items = [_serialize(x) for x in res.scalars().all()]
+
+    total = await db.scalar(select(func.count()).select_from(Model))
+    pk_cols = _pk_columns(Model)
+    return {
+        "items": items,
+        "limit": limit,
+        "offset": offset,
+        "total": int(total or 0),
+        "primary_key": [c.name for c in pk_cols],  # can be composite
+        "columns": [c.name for c in Model.__table__.columns],
+    }
+
+
+async def create_row_service(db: AsyncSession, entity: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    Model = _get_model(entity)
+    data = _clean_payload(Model, payload)
+
+    obj = Model(**data)
+    db.add(obj)
 
     try:
-        tbl = await session.run_sync(_reflect)
-        return tbl
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(400, f"Create failed: {str(e)}")
+
+    # refresh for generated PK/defaults
+    try:
+        await db.refresh(obj)
     except Exception:
-        raise SystemError(404, "Table not found")
+        # some composite/join tables might not refresh well; ignore
+        pass
 
-def _get_pk_column(table: Table):
-    pk_cols = list(table.primary_key.columns)
-    if not pk_cols:
-        raise SystemError(400, "Table has no primary key (not supported)")
-    if len(pk_cols) != 1:
-        raise SystemError(400, "Composite PK not supported in this simple admin")
-    return pk_cols[0]
+    return {"item": _serialize(obj)}
 
-def _serialize_row(row: Any) -> Dict[str, Any]:
-    return dict(row._mapping)
 
-async def list_tables_service() -> List[str]:
-    return sorted(ALLOWED_TABLES)
+async def update_row_service(db: AsyncSession, entity: str, row_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    Model = _get_model(entity)
+    pk_cols = _pk_columns(Model)
 
-async def table_schema_service(table: str, db: AsyncSession) -> Dict[str, Any]:
-    tbl = await _load_table(table, db)
-    pk = _get_pk_column(tbl)
+    key_raw = _parse_row_id(pk_cols, row_id)
 
-    cols: List[Dict[str, Any]] = []
-    for c in tbl.columns:
-        cols.append(
-            {
-                "name": c.name,
-                "nullable": c.nullable,
-                "primary_key": c.name == pk.name,
-                "type": str(c.type),
-            }
-        )
+    # coerce PK values too
+    key: Dict[str, Any] = {}
+    for c in pk_cols:
+        key[c.name] = _coerce_value(c, key_raw[c.name])
 
-    return {"table": tbl.name, "primary_key": pk.name, "columns": cols}
+    obj = await db.get(Model, key if len(pk_cols) > 1 else list(key.values())[0])
+    if not obj:
+        raise HTTPException(404, "Row not found")
 
-async def list_rows_service(table: str, db: AsyncSession, limit: int, offset: int,) -> Dict[str, Any]:
-    tbl = await _load_table(table, db)
+    data = _clean_payload(Model, payload)
 
-    stmt = select(tbl).limit(limit).offset(offset)
-    res: Result = await db.execute(stmt)
-    rows = [_serialize_row(r) for r in res.fetchall()]
-    return {"items": rows, "limit": limit, "offset": offset}
+    # don't allow changing PK via update (avoid weirdness)
+    for c in pk_cols:
+        data.pop(c.name, None)
 
-async def create_row_service(table: str, payload: Dict[str, Any], db: AsyncSession) -> Dict[str, Any]:
-    tbl = await _load_table(table, db)
+    for k, v in data.items():
+        setattr(obj, k, v)
 
-    clean = {k: v for k, v in payload.items() if k in tbl.c}
+    try:
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(400, f"Update failed: {str(e)}")
 
-    stmt = insert(tbl).values(**clean).returning(tbl)
-    res = await db.execute(stmt)
-    await db.commit()
+    try:
+        await db.refresh(obj)
+    except Exception:
+        pass
 
-    created = res.fetchone()
-    return {"item": _serialize_row(created)}
+    return {"item": _serialize(obj)}
 
-async def update_row_service(table: str, row_id: str, payload: Dict[str, Any], db: AsyncSession) -> Dict[str, Any]:
-    tbl = await _load_table(table, db)
-    pk = _get_pk_column(tbl)
 
-    clean = {k: v for k, v in payload.items() if k in tbl.c and k != pk.name}
+async def delete_row_service(db: AsyncSession, entity: str, row_id: str) -> Dict[str, Any]:
+    Model = _get_model(entity)
+    pk_cols = _pk_columns(Model)
 
-    stmt = update(tbl).where(pk == row_id).values(**clean).returning(tbl)
-    res = await db.execute(stmt)
-    updated = res.fetchone()
-    if not updated:
-        raise SystemError(404, "Row not found")
+    key_raw = _parse_row_id(pk_cols, row_id)
 
-    await db.commit()
-    return {"item": _serialize_row(updated)}
+    key: Dict[str, Any] = {}
+    for c in pk_cols:
+        key[c.name] = _coerce_value(c, key_raw[c.name])
 
-async def delete_row_service(table: str, row_id: str, db: AsyncSession) -> Dict[str, Any]:
-    tbl = await _load_table(table, db)
-    pk = _get_pk_column(tbl)
+    obj = await db.get(Model, key if len(pk_cols) > 1 else list(key.values())[0])
+    if not obj:
+        raise HTTPException(404, "Row not found")
 
-    stmt = delete(tbl).where(pk == row_id).returning(pk)
-    res = await db.execute(stmt)
-    deleted = res.fetchone()
-    if not deleted:
-        raise SystemError(404, "Row not found")
+    await db.delete(obj)
+    try:
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(400, f"Delete failed: {str(e)}")
 
-    await db.commit()
     return {"deleted": True, "id": row_id}

@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from src.db.base import get_db
-from src.routers.resultModels import ForumIdeaOut, ForumEventOut, ForumSettingsOut, AddForumEventIn
-from src.controllers.forum import (team_forum_ideas_controller, future_forum_events_controller, forum_constants_controller, add_forum_event_controller)
+from src.routers.forum_results import ForumIdeaOut, ForumEventOut, AddForumEventIn
+from src.controllers.forum import (team_forum_ideas_controller, future_forum_events_controller, add_forum_event_controller)
 
 forum_router = APIRouter(prefix="/forum", tags=["forum"])
 
@@ -19,10 +19,6 @@ async def team_forum_ideas(team_id: int = Query(..., ge=1), db: Session = Depend
 @forum_router.get("/futureForumEvents", response_model=List[ForumEventOut])
 async def future_forum_events(db: Session = Depends(get_db)):
     return await future_forum_events_controller(db=db)
-
-@forum_router.get("/ForumSettings", response_model=ForumSettingsOut)
-async def forum_constants(db: Session = Depends(get_db)):
-    return await forum_constants_controller(db=db)
 
 @forum_router.post("/addForumEvent", response_model=ForumEventOut, status_code=201)
 async def add_forum_event(payload: AddForumEventIn, db: Session = Depends(get_db)):

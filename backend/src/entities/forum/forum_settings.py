@@ -12,7 +12,7 @@ class ForumSettings(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    first_forum_date_time: Mapped[datetime] = mapped_column(
+    first_forum_datetime: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False
     )

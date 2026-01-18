@@ -4,11 +4,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from src.routers.resultModels import SystemError
 from src.entities.forum.forum_idea import ForumIdea
 from src.entities.forum.forum_event import ForumEvent
-from src.entities.forum.forum_settings import ForumSettings
-from src.routers.resultModels import AddForumEventIn, ForumSettingsOut  # לפי המבנה שלך
+from src.routers.forum_results import AddForumEventIn
 
 async def get_team_forum_ideas(*, db: AsyncSession, team_id: int):
     stmt = select(ForumIdea).where(ForumIdea.team_id == team_id).order_by(ForumIdea.id.desc())
@@ -20,19 +18,6 @@ async def get_future_forum_events(*, db: AsyncSession):
     stmt = select(ForumEvent).where(ForumEvent.date_time > now).order_by(ForumEvent.date_time.asc())
     res = await db.execute(stmt)
     return res.scalars().all()
-
-async def get_forum_constants(*, db: AsyncSession) -> ForumSettingsOut:
-    stmt = select(ForumSettings).order_by(ForumSettings.id.desc()).limit(1)
-    res = await db.execute(stmt)
-    const = res.scalars().first()
-    if not const:
-        raise SystemError(404, "Forum constants not found")
-
-    participants = [x.strip() for x in const.participants_order_csv.split(",") if x.strip()]
-    return ForumSettingsOut(
-        first_forum_datetime=const.first_forum_datetime,
-        participants_order=participants,
-    )
 
 async def create_forum_event(*, db: AsyncSession, payload: AddForumEventIn):
     event = ForumEvent(name=payload.name, date_time=payload.date_time, team_id=payload.team_id)

@@ -14,11 +14,6 @@ export type ForumEvent = {
   team_id: number;
 };
 
-export type ForumSettings = {
-  first_forum_datetime: string;
-  participants_order: string[];
-};
-
 export type AddForumEventIn = {
   name: string;
   date_time: string;
@@ -34,11 +29,6 @@ export async function getTeamForumIdeas(teamId: number) {
 
 export async function getFutureForumEvents() {
   const res = await http.get<ForumEvent[]>("/forum/futureForumEvents");
-  return res.data;
-}
-
-export async function getForumSettings() {
-  const res = await http.get<ForumSettings>("/forum/ForumSettings");
   return res.data;
 }
 
