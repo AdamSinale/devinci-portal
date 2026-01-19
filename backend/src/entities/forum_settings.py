@@ -11,7 +11,7 @@ from src.entities.base import Base
 class ForumSettings(Base):
     __tablename__ = "forum_settings"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
     first_forum_datetime: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

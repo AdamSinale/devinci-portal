@@ -21,6 +21,9 @@ services:
     container_name: devinci-backend
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/postgres
+      ADMIN_T_NANE: t_adam_si
+      ADMIN_NAME: adam sin
+      ADMIN_PASSWORD: sinale1234
     depends_on:
       db:
         condition: service_healthy

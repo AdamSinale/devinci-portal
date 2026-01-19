@@ -1,23 +1,24 @@
 import { useState } from "react";
-import { Alert, Button, Card, Container, Stack, TextInput, Title } from "@mantine/core";
+import { Alert, Button, Card, Container, PasswordInput, Stack, TextInput, Title } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
-import { loginByName } from "./api/auth";
+import { login } from "./api/auth";
 import { useAuth } from "./AuthContext";
 
 export default function LoginPage() {
-  const [name, setName] = useState("");
+  const [tName, setTName] = useState("");
+  const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const nav = useNavigate();
-  const { login } = useAuth();
+  const { login: setAuth } = useAuth();
 
   async function submit() {
     setErr(null);
     setLoading(true);
     try {
-      const user = await loginByName(name.trim());
-      login(user);
+      const u = await login(tName.trim(), password);
+      setAuth(u);
       nav("/");
     } catch (e: any) {
       setErr(e?.response?.data?.detail ?? e?.message ?? "Login failed");
@@ -32,12 +33,20 @@ export default function LoginPage() {
         <Stack>
           <Title order={2}>Login</Title>
           {err && <Alert color="red">{err}</Alert>}
+
           <TextInput
             label="t_name"
-            value={name}
-            onChange={(e) => setName(e.currentTarget.value)}
+            value={tName}
+            onChange={(e) => setTName(e.currentTarget.value)}
           />
-          <Button onClick={submit} loading={loading} disabled={!name.trim()}>
+
+          <PasswordInput
+            label="Password"
+            value={password}
+            onChange={(e) => setPassword(e.currentTarget.value)}
+          />
+
+          <Button onClick={submit} loading={loading} disabled={!tName.trim() || !password}>
             Login
           </Button>
         </Stack>

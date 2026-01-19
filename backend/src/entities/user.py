@@ -19,6 +19,8 @@ class User(Base):
     __tablename__ = "users"
 
     t_name: Mapped[str] = mapped_column(String(20), primary_key=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+
     name: Mapped[str] = mapped_column(String(20), nullable=False)
 
     birthday: Mapped[Optional[date]] = mapped_column(Date, nullable=True)

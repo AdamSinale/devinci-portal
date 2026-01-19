@@ -13,11 +13,6 @@ from zoneinfo import ZoneInfo
 from datetime import datetime
 from pydantic import BaseModel, Field
 
-class AddForumEventIn(BaseModel):
-    name: str = Field(min_length=1, max_length=255)
-    date_time: datetime
-    team_name: str
-
 
 async def get_team_forum_ideas(*, db: AsyncSession, team_name: str) -> List[ForumIdeaResult]:
     stmt = select(ForumIdea).where(ForumIdea.team_name == team_name).order_by(ForumIdea.id.desc())
@@ -29,13 +24,6 @@ async def get_future_forum_events(*, db: AsyncSession) -> List[ForumEventResult]
     stmt = select(ForumEvent).where(ForumEvent.date_time > now).order_by(ForumEvent.date_time.asc())
     res = await db.execute(stmt)
     return res.scalars().all()
-
-async def create_forum_event(*, db: AsyncSession, payload: AddForumEventIn) -> ForumEventResult:
-    event = ForumEvent(name=payload.name, date_time=payload.date_time, team_name=payload.team_name)
-    db.add(event)
-    await db.commit()
-    await db.refresh(event)
-    return event
 
 
 LOCAL_TZ = ZoneInfo("Asia/Jerusalem")
