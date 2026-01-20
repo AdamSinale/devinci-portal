@@ -18,7 +18,7 @@ async def get_current_identity(creds: HTTPAuthorizationCredentials | None = Depe
     payload = verify_token(creds.credentials)
     return payload
 
-async def require_adam_sin(identity = Depends(get_current_identity)):
+async def require_admin(identity = Depends(get_current_identity)):
     if identity.get("t_name") != ADMIN_T_NANE:
-        raise SystemError(403, "Forbidden")
+        raise SystemError(403, f"Forbidden, You are not an admin")
     return identity

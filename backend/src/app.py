@@ -9,6 +9,7 @@ from src.routers.main import main_router
 
 from src.entities.base import Base
 from src.entities.user import User 
+from src.entities.forum_settings import ForumSettings 
 from src.auth.auth import hash_password
 import os
 
@@ -29,10 +30,13 @@ async def init_db_and_seed() -> None:
 
     async with SessionLocal() as session:
         existing = await session.scalar(select(User).where(User.t_name == ADMIN_T_NANE))
-        if existing:
-            return
+        if not existing:
+            session.add(User(t_name=ADMIN_T_NANE, name=ADMIN_NAME, password_hash=hash_password(ADMIN_PASSWORD)))
 
-        session.add(User(t_name=ADMIN_T_NANE, name=ADMIN_NAME, password_hash=hash_password(ADMIN_PASSWORD)))
+        existing = await session.scalar(select(ForumSettings))
+        if not existing:
+            session.add(ForumSettings(id=1, first_forum_datetime=date.today(), forum_minute_length=60))
+
         await session.commit()
 
 @asynccontextmanager

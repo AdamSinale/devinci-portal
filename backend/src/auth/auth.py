@@ -54,7 +54,7 @@ async def login(payload: LoginIn, db: AsyncSession = Depends(get_db)):
     if not verify_password(password, user.password_hash):
         raise SystemError(401, "Bad credentials")
 
-    token = mint_token(name=user.t_name)
+    token = mint_token(t_name=user.t_name)
     return LoginResult(
         t_name=user.t_name,
         name=user.name,

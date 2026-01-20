@@ -1,9 +1,8 @@
 from datetime import datetime
-from typing import List, Optional, Literal
+from typing import Optional, Literal
 
 from pydantic import BaseModel
-from sqlalchemy import DateTime, Integer, String
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy import DateTime, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.entities.base import Base
@@ -19,12 +18,6 @@ class ForumSettings(Base):
     )
 
     forum_minute_length: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
-
-    teams_order: Mapped[List[str]] = mapped_column(
-        ARRAY(String),
-        nullable=False,
-        default=list,
-    )
 
 
 class ForumScheduleResult(BaseModel):

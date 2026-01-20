@@ -29,15 +29,13 @@ export default function AdminPage() {
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
 
   const [columns, setColumns] = useState<string[]>([]);
-  const [primaryKey, setPrimaryKey] = useState<string[]>([]);
+  const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
   const [rows, setRows] = useState<Row[]>([]);
-  const [total, setTotal] = useState<number>(0);
 
   const [loadingEntities, setLoadingEntities] = useState(true);
   const [loadingRows, setLoadingRows] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Editing
   const [mode, setMode] = useState<"none" | "create" | "edit">("none");
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Row>({});
@@ -48,9 +46,8 @@ export default function AdminPage() {
   );
 
   function buildRowId(row: Row): string | null {
-    if (!primaryKey || primaryKey.length === 0) return null;
-
-    const parts = primaryKey.map((k) => row[k]);
+    if (!primaryKeys.length) return null;
+    const parts = primaryKeys.map((k) => row[k]);
     if (parts.some((x) => x === null || x === undefined)) return null;
     return parts.map((x) => String(x)).join(":");
   }
@@ -73,17 +70,16 @@ export default function AdminPage() {
     setErr(null);
     setLoadingRows(true);
     try {
-      const res = await getAdminRows(entity, 50, 0);
+      const res = await getAdminRows(entity);
+
       setRows(res.items ?? []);
       setColumns(res.columns ?? []);
-      setPrimaryKey(res.primary_key ?? []);
-      setTotal(res.total ?? 0);
+      setPrimaryKeys(res.primary_keys ?? []);
     } catch (e: any) {
       setErr(e?.response?.data?.detail ?? e?.message ?? "Failed to load rows");
       setRows([]);
       setColumns([]);
-      setPrimaryKey([]);
-      setTotal(0);
+      setPrimaryKeys([]);
     } finally {
       setLoadingRows(false);
     }
@@ -107,10 +103,9 @@ export default function AdminPage() {
   function startEdit(row: Row) {
     const rid = buildRowId(row);
     if (!rid) {
-      setErr("Cannot edit: missing primary key value");
+      setErr("Cannot edit: missing PK value(s)");
       return;
     }
-
     resetEditing();
     setMode("edit");
     setEditingRowId(rid);
@@ -119,7 +114,6 @@ export default function AdminPage() {
 
   async function handleCreate() {
     if (!selectedEntity) return;
-
     setErr(null);
     try {
       await createAdminRow(selectedEntity, normalizePayloadForSubmit(draft));
@@ -132,12 +126,11 @@ export default function AdminPage() {
 
   async function handleSaveEdit() {
     if (!selectedEntity || !editingRowId) return;
-
     setErr(null);
     try {
       const payload = { ...draft };
-      // אל תנסה לעדכן PK
-      for (const pk of primaryKey) delete payload[pk];
+
+      for (const pk of primaryKeys) delete payload[pk];
 
       await updateAdminRow(selectedEntity, editingRowId, normalizePayloadForSubmit(payload));
       resetEditing();
@@ -149,14 +142,12 @@ export default function AdminPage() {
 
   async function handleDelete(row: Row) {
     if (!selectedEntity) return;
-
     const rid = buildRowId(row);
     if (!rid) {
-      setErr("Cannot delete: missing primary key value");
+      setErr("Cannot delete: missing PK value(s)");
       return;
     }
-
-    const ok = confirm(`Delete row id=${rid} ?`);
+    const ok = confirm(`Delete row id=${rid}?`);
     if (!ok) return;
 
     setErr(null);
@@ -168,21 +159,13 @@ export default function AdminPage() {
     }
   }
 
-  // initial load
   useEffect(() => {
     void loadEntities();
   }, []);
 
-  // when entity changes load rows (includes columns/pk)
   useEffect(() => {
     if (!selectedEntity) return;
-
     resetEditing();
-    setRows([]);
-    setColumns([]);
-    setPrimaryKey([]);
-    setTotal(0);
-
     void loadRows(selectedEntity);
   }, [selectedEntity]);
 
@@ -195,17 +178,14 @@ export default function AdminPage() {
           <div>
             <Title order={2}>Admin</Title>
             <Text c="dimmed" size="sm">
-              Browse entities, add/edit/delete rows. Total: {total}
+              Browse entities, add/edit/delete rows.
             </Text>
           </div>
 
           <Group>
             <Button
               variant="light"
-              onClick={() => {
-                if (selectedEntity) void loadRows(selectedEntity);
-                else void loadEntities();
-              }}
+              onClick={() => selectedEntity ? void loadRows(selectedEntity) : void loadEntities()}
               disabled={busy}
             >
               Refresh
@@ -230,7 +210,6 @@ export default function AdminPage() {
           <Group justify="space-between" align="flex-end">
             <Select
               label="Entity"
-              placeholder={loadingEntities ? "Loading..." : "Pick an entity"}
               data={entityOptions}
               value={selectedEntity}
               onChange={setSelectedEntity}
@@ -239,7 +218,6 @@ export default function AdminPage() {
               disabled={loadingEntities}
               w={320}
             />
-
             {busy && <Loader size="sm" />}
           </Group>
 
@@ -256,7 +234,7 @@ export default function AdminPage() {
                       {columns.map((c) => (
                         <Table.Th key={c}>
                           {c}
-                          {primaryKey.includes(c) ? " (PK)" : ""}
+                          {primaryKeys.includes(c) ? " (PK)" : ""}
                         </Table.Th>
                       ))}
                       <Table.Th style={{ width: 240 }}>Actions</Table.Th>
@@ -264,16 +242,19 @@ export default function AdminPage() {
                   </Table.Thead>
 
                   <Table.Tbody>
-                    {/* CREATE ROW */}
+                    {/* CREATE */}
                     {mode === "create" && (
                       <Table.Tr>
                         {columns.map((c) => (
                           <Table.Td key={c}>
-                            <CellEditor
-                              colName={c}
-                              value={draft[c]}
-                              disabled={false}
-                              onChange={(val) => setDraft((d) => ({ ...d, [c]: val }))}
+                            <TextInput
+                              value={draft[c] ?? ""}
+                              placeholder={`Edit ${c}`}
+                              onChange={(e) => {
+                                const value = e.currentTarget.value;
+                                setDraft((d) => ({ ...d, [c]: value }));
+                              }}
+                              size="xs"
                             />
                           </Table.Td>
                         ))}
@@ -314,15 +295,18 @@ export default function AdminPage() {
                         return (
                           <Table.Tr key={rid ?? idx}>
                             {columns.map((c) => {
-                              const isPk = primaryKey.includes(c);
+                              const isPk = primaryKeys.includes(c);
                               return (
                                 <Table.Td key={c} onDoubleClick={() => !isEditing && startEdit(r)}>
                                   {isEditing ? (
-                                    <CellEditor
-                                      colName={c}
-                                      value={draft[c]}
+                                    <TextInput
+                                      value={draft[c] ?? ""}
                                       disabled={isPk}
-                                      onChange={(val) => setDraft((d) => ({ ...d, [c]: val }))}
+                                      onChange={(e) => {
+                                        const value = e.currentTarget.value;
+                                        setDraft((d) => ({ ...d, [c]: value }));
+                                      }}
+                                      size="xs"
                                     />
                                   ) : (
                                     <Text size="sm" lineClamp={2}>
@@ -371,38 +355,12 @@ export default function AdminPage() {
                     )}
                   </Table.Tbody>
                 </Table>
-
-                <Text c="dimmed" size="xs" mt="sm">
-                  Tip: double-click a cell to start editing a row. Composite PK uses "a:b" row ids.
-                </Text>
               </div>
             )}
           </div>
         </Card>
       </Stack>
     </Container>
-  );
-}
-
-function CellEditor({
-  colName,
-  value,
-  disabled,
-  onChange,
-}: {
-  colName: string;
-  value: any;
-  disabled: boolean;
-  onChange: (val: any) => void;
-}) {
-  return (
-    <TextInput
-      value={value ?? ""}
-      disabled={disabled}
-      placeholder={`Edit ${colName}`}
-      onChange={(e) => onChange(e.currentTarget.value)}
-      size="xs"
-    />
   );
 }
 
@@ -413,15 +371,11 @@ function formatCell(v: any) {
   return String(v);
 }
 
-/**
- * מינימום ניקוי:
- * - מאפשר לרוקן שדה: "" -> null
- * (הבק אחראי להמרות טיפוסים אמיתיות)
- */
 function normalizePayloadForSubmit(payload: Record<string, any>) {
   const out: Record<string, any> = {};
   for (const [k, v] of Object.entries(payload)) {
-    out[k] = v === "" ? null : v;
+    if (v === "" || v === null || v === undefined) continue;
+    out[k] = v;
   }
   return out;
 }

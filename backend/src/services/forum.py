@@ -5,13 +5,14 @@ from typing import List
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from src.entities.team import Team
+from src.entities.team import Team
 from src.entities.forum_settings import ForumScheduleResult, ForumSettings
 from src.entities.forum_idea import ForumIdea, ForumIdeaResult
 from src.entities.forum_event import ForumEvent, ForumEventResult
 from zoneinfo import ZoneInfo
 
 from datetime import datetime
-from pydantic import BaseModel, Field
 
 
 async def get_team_forum_ideas(*, db: AsyncSession, team_name: str) -> List[ForumIdeaResult]:
@@ -34,29 +35,17 @@ def _week_key_sun_to_sat(dt: datetime) -> str:
     return week_start.isoformat()
 
 async def get_future_forum_schedule(*, db, weeks: int = 54) -> List[ForumScheduleResult]:
-    now_utc = datetime.now(timezone.utc)
-    end_utc = now_utc + timedelta(weeks=weeks)
-
-    settings_stmt = select(ForumSettings).order_by(ForumSettings.id.desc()).limit(1)
-    settings_res = await db.execute(settings_stmt)
-    settings = settings_res.scalars().first()
+    settings = await db.scalar(select(ForumSettings).order_by(ForumSettings.id.desc()).limit(1))
     if not settings:
         return []
 
     base_dt = settings.first_forum_datetime
-    team_cycle = settings.teams_order or []
-    if len(team_cycle) == 0:
+    minute_length = settings.forum_minute_length
+    team_cycle = (await db.scalars(select(Team.name).order_by(Team.order.asc()))).all()
+    if not team_cycle:
         return []
 
-    minute_length = settings.forum_minute_length
-
-    overrides_stmt = (
-        select(ForumEvent)
-        .where(ForumEvent.date_time >= now_utc, ForumEvent.date_time <= end_utc)
-        .order_by(ForumEvent.date_time.asc())
-    )
-    overrides_res = await db.execute(overrides_stmt)
-    overrides = overrides_res.scalars().all()
+    overrides = await get_future_forum_events(db=db)
 
     override_by_week = {}
     for ev in overrides:
@@ -64,6 +53,7 @@ async def get_future_forum_schedule(*, db, weeks: int = 54) -> List[ForumSchedul
         if k not in override_by_week:
             override_by_week[k] = ev
 
+    now_utc = datetime.now(timezone.utc)
     schedule = []
     for i in range(weeks):
         generated_dt = base_dt + timedelta(weeks=i)

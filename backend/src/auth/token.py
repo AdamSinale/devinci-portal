@@ -20,9 +20,9 @@ def _b64url_decode(s: str) -> bytes:
     pad = "=" * (-len(s) % 4)
     return base64.urlsafe_b64decode((s + pad).encode("utf-8"))
 
-def mint_token(*, name: str) -> str:
+def mint_token(*, t_name: str) -> str:
     now = int(time.time())
-    payload = {"name": name, "iat": now, "exp": now + TOKEN_TTL_SECONDS}
+    payload = {"t_name": t_name, "iat": now, "exp": now + TOKEN_TTL_SECONDS}
     payload_b = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
     payload_s = _b64url_encode(payload_b)
 

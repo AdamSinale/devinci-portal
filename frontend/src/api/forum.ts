@@ -30,23 +30,19 @@ export type ForumScheduleItem = {
 };
 
 export async function getTeamForumIdeas(teamName: string) {
-  const res = await http.get<ForumIdea[]>("/forum/teamForumIdeas", {
+  const res = await http.get<ForumIdea[]>("/forum_ideas/teamForumIdeas", {
     params: { team_name: teamName },
   });
   return res.data;
 }
 
 export async function getFutureForumSchedule() {
-  const res = await http.get<ForumScheduleItem[]>("/forum/futureForumSchedule");
+  const res = await http.get<ForumScheduleItem[]>("/forum_settings/futureForumSchedule");
   return res.data;
 }
 
 export async function getFutureForumEvents() {
-  const res = await http.get<ForumEvent[]>("/forum/futureForumEvents");
+  const res = await http.get<ForumEvent[]>("/forum_events/futureForumEvents");
   return res.data;
 }
 
-export async function addForumEvent(payload: AddForumEventIn) {
-  const res = await http.post<ForumEvent>("/forum/addForumEvent", payload);
-  return res.data;
-}
