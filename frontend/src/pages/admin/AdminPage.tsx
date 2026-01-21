@@ -22,154 +22,153 @@ import {
   deleteAdminRow,
 } from "../../api/admin";
 
-type Row = Record<string, any>;
+import { extractErrorMessage, formatCell, normalizePayloadForSubmit, mapRowForEdit } from "./utils";
+
+type Row = Record<string, any>;  // object for each table row, key = column name, value = cell value
 
 export default function AdminPage() {
-  const [entities, setEntities] = useState<string[]>([]);
-  const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
+  const [entities, setEntities] = useState<string[]>([]);                   // entity names list
+  const [selectedEntity, setSelectedEntity] = useState<string|null>(null);  // currently selected entity
 
-  const [columns, setColumns] = useState<string[]>([]);
-  const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
-  const [rows, setRows] = useState<Row[]>([]);
+  const [columns, setColumns] = useState<string[]>([]);                     // columns for selected entity
+  const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);             // primary key columns for selected entity
+  const [rows, setRows] = useState<Row[]>([]);                              // rows for selected entity
 
-  const [loadingEntities, setLoadingEntities] = useState(true);
-  const [loadingRows, setLoadingRows] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [loadingEntities, setLoadingEntities] = useState(true);             // loading state for entities list, true on initial load
+  const [loadingRows, setLoadingRows] = useState(false);                    // loading state for rows, false until changing entity
+  const [err, setErr] = useState<string | null>(null);                      // error message, if any
 
-  const [mode, setMode] = useState<"none" | "create" | "edit">("none");
-  const [editingRowId, setEditingRowId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<Row>({});
+  const [mode, setMode] = useState<"none" | "create" | "edit">("none");     // current mode: none, create, edit
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);    // row id being edited
+  const [draft, setDraft] = useState<Row>({});                              // draft row created/edited (object textInputs read/write)
 
-  const entityOptions = useMemo(
-    () => entities.map((t) => ({ value: t, label: t })),
-    [entities],
+  const entityOptions = useMemo(                                            // options for entity select
+    () => entities.map((t) => ({ value: t, label: t })),                    // map entity names to {value,label} objects
+    [entities],                                                             // recompute when entities change
   );
 
-  function buildRowId(row: Row): string | null {
-    if (!primaryKeys.length) return null;
-    const parts = primaryKeys.map((k) => row[k]);
-    if (parts.some((x) => x === null || x === undefined)) return null;
-    return parts.map((x) => String(x)).join(":");
+  function buildRowId(row: Row): string | null {                        // create row id by PK      
+    if (!primaryKeys.length) return null;                               // if no PKs, cant build id
+    const parts = primaryKeys.map((k) => row[k]);                       // get PK values from row
+    if (parts.some((x) => x === null || x === undefined)) return null;  // if PK value missing, cant build id
+    return parts.map((x) => String(x)).join(":");                       // return pk1:pk2:... string
   }
 
-  async function loadEntities() {
-    setErr(null);
-    setLoadingEntities(true);
-    try {
-      const list = await getAdminEntities();
-      setEntities(list);
-      setSelectedEntity((prev) => prev ?? list[0] ?? null);
+  async function loadEntities() {                                   // load entity names list
+    setErr(null);                                                   // removes previous error
+    setLoadingEntities(true);                                       // set loading state
+    try {                                        
+      const list = await getAdminEntities();                        // entity names from API
+      setEntities(list);                                            // set given names to entity list state
+      setSelectedEntity((prev) => prev ?? list[0] ?? null);         // select first entity if none selected
     } catch (e: any) {
-      setErr(e?.response?.data?.detail ?? e?.message ?? "Failed to load entities");
+      setErr(extractErrorMessage(e) || "Failed to load entities");  // set error message
     } finally {
-      setLoadingEntities(false);
+      setLoadingEntities(false);                                    // stop loading state
     }
   }
 
-  async function loadRows(entity: string) {
-    setErr(null);
-    setLoadingRows(true);
+  async function loadRows(entity: string) {                     // load rows for given entity
+    setErr(null);                                               // removes previous error
+    setLoadingRows(true);                                       // set loading state
     try {
-      const res = await getAdminRows(entity);
+      const res = await getAdminRows(entity);                   // get rows from API
 
-      setRows(res.items ?? []);
-      setColumns(res.columns ?? []);
-      setPrimaryKeys(res.primary_keys ?? []);
+      setRows(res.items ?? []);                                 // set rows state
+      setColumns(res.columns ?? []);                            // set columns state
+      setPrimaryKeys(res.primary_keys ?? []);                   // set primary keys state
     } catch (e: any) {
-      setErr(e?.response?.data?.detail ?? e?.message ?? "Failed to load rows");
-      setRows([]);
-      setColumns([]);
-      setPrimaryKeys([]);
+      setErr(extractErrorMessage(e) || "Failed to load rows");  // set error message
+      setRows([]);                                              // clear rows
+      setColumns([]);                                           // clear columns
+      setPrimaryKeys([]);                                       // clear primary keys
     } finally {
-      setLoadingRows(false);
+      setLoadingRows(false);                                    // stop loading state
     }
   }
 
-  function resetEditing() {
-    setMode("none");
-    setEditingRowId(null);
-    setDraft({});
+  function resetMode() {    // reset state
+    setMode("none");        // set mode to none
+    setEditingRowId(null);  // clear editing row id
+    setDraft({});           // clear draft row
   }
 
   function startCreate() {
-    resetEditing();
-    setMode("create");
-
-    const initial: Row = {};
-    for (const c of columns) initial[c] = "";
-    setDraft(initial);
+    resetMode();                               // reset state
+    setMode("create");                         // set mode to create
+    const initial: Row = {};                   // initial empty row
+    for (const c of columns) initial[c] = "";  // set all columns to empty string
+    setDraft(initial);                         // set draft to initial empty row
   }
 
-  function startEdit(row: Row) {
-    const rid = buildRowId(row);
-    if (!rid) {
-      setErr("Cannot edit: missing PK value(s)");
+  function startEdit(row: Row) {                   // start editing given row
+    const rid = buildRowId(row);                   // build row id from PKs
+    if (!rid) {                                    // if cannot build row id
+      setErr("Cannot edit: missing PK value(s)");  // set error
       return;
     }
-    resetEditing();
-    setMode("edit");
-    setEditingRowId(rid);
-    setDraft({ ...row });
+    resetMode();                                   // reset state
+    setMode("edit");                               // set mode to edit
+    setEditingRowId(rid);                          // set editing row id
+    setDraft(mapRowForEdit(row));                  // set draft to given row
   }
 
-  async function handleCreate() {
-    if (!selectedEntity) return;
-    setErr(null);
+  async function handleCreate() {                                              // handle create row action  
+    if (!selectedEntity) return;                                               // if no entity selected, do nothing
+    setErr(null);                                                              // clear previous error
     try {
-      await createAdminRow(selectedEntity, normalizePayloadForSubmit(draft));
-      resetEditing();
-      await loadRows(selectedEntity);
+      await createAdminRow(selectedEntity, normalizePayloadForSubmit(draft));  // create row via API
+      resetMode();                                                             // reset state
+      await loadRows(selectedEntity);                                          // reload rows for entity
     } catch (e: any) {
-      setErr(e?.response?.data?.detail ?? e?.message ?? "Create failed");
+      setErr(extractErrorMessage(e) || "Create failed");                       // set error message on failure
     }
   }
 
-  async function handleSaveEdit() {
-    if (!selectedEntity || !editingRowId) return;
-    setErr(null);
+  async function handleSaveEdit() {                                                            // handle save edited row action
+    if (!selectedEntity || !editingRowId) return;                                              // if no entity or editing row id, do nothing
+    setErr(null);                                                                              // clear previous error
     try {
-      const payload = { ...draft };
-
-      for (const pk of primaryKeys) delete payload[pk];
-
-      await updateAdminRow(selectedEntity, editingRowId, normalizePayloadForSubmit(payload));
-      resetEditing();
-      await loadRows(selectedEntity);
+      const payload = { ...draft };                                                            // copy draft to payload
+      for (const pk of primaryKeys) delete payload[pk];                                        // remove PKs from payload to avoid updating them
+      await updateAdminRow(selectedEntity, editingRowId, normalizePayloadForSubmit(payload));  // update row via API
+      resetMode();                                                                             // reset state
+      await loadRows(selectedEntity);                                                          // reload rows for entity
     } catch (e: any) {
-      setErr(e?.response?.data?.detail ?? e?.message ?? "Update failed");
+      setErr(extractErrorMessage(e) || "Update failed");                                       // set error message on failure
     }
   }
 
-  async function handleDelete(row: Row) {
-    if (!selectedEntity) return;
-    const rid = buildRowId(row);
-    if (!rid) {
-      setErr("Cannot delete: missing PK value(s)");
+  async function handleDelete(row: Row) {                 // handle delete row action
+    if (!selectedEntity) return;                          // if no entity selected, do nothing
+    const rid = buildRowId(row);                          // build row id from PKs
+    if (!rid) {                                           // if cannot build row id
+      setErr("Cannot delete: missing PK value(s)");       // set error
       return;
     }
-    const ok = confirm(`Delete row id=${rid}?`);
-    if (!ok) return;
+    const ok = confirm(`Delete row id=${rid}?`);          // "confirm deletion" notification
+    if (!ok) return;                                      // if not confirmed, do nothing
 
-    setErr(null);
+    setErr(null);                                         // clear previous error
     try {
-      await deleteAdminRow(selectedEntity, rid);
-      await loadRows(selectedEntity);
+      await deleteAdminRow(selectedEntity, rid);          // delete row via API
+      await loadRows(selectedEntity);                     // reload rows for entity
     } catch (e: any) {
-      setErr(e?.response?.data?.detail ?? e?.message ?? "Delete failed");
+      setErr(extractErrorMessage(e) || "Delete failed");  // set error message on failure
     }
   }
 
   useEffect(() => {
-    void loadEntities();
+    void loadEntities();  // load entities on initial mount
   }, []);
 
-  useEffect(() => {
-    if (!selectedEntity) return;
-    resetEditing();
-    void loadRows(selectedEntity);
+  useEffect(() => {                 // when selected entity changes
+    if (!selectedEntity) return;    // if no entity selected, do nothing
+    resetMode();                    // reset state
+    void loadRows(selectedEntity);  // load rows when selected entity changes
   }, [selectedEntity]);
 
-  const busy = loadingEntities || loadingRows;
+  const busy = loadingEntities || loadingRows;  // busy state when loading entities or rows
 
   return (
     <Container size="xl" py="md">
@@ -183,18 +182,11 @@ export default function AdminPage() {
           </div>
 
           <Group>
-            <Button
-              variant="light"
-              onClick={() => selectedEntity ? void loadRows(selectedEntity) : void loadEntities()}
-              disabled={busy}
-            >
+            <Button variant="light" onClick={() => selectedEntity ? void loadRows(selectedEntity) : void loadEntities()} disabled={busy}>
               Refresh
             </Button>
 
-            <Button
-              onClick={startCreate}
-              disabled={!selectedEntity || columns.length === 0 || mode !== "none" || loadingRows}
-            >
+            <Button onClick={startCreate} disabled={!selectedEntity || columns.length === 0 || mode !== "none" || loadingRows}>
               + Add row
             </Button>
           </Group>
@@ -263,7 +255,7 @@ export default function AdminPage() {
                             <Button size="xs" onClick={handleCreate}>
                               Create
                             </Button>
-                            <Button size="xs" variant="light" onClick={resetEditing}>
+                            <Button size="xs" variant="light" onClick={resetMode}>
                               Cancel
                             </Button>
                           </Group>
@@ -300,6 +292,7 @@ export default function AdminPage() {
                                 <Table.Td key={c} onDoubleClick={() => !isEditing && startEdit(r)}>
                                   {isEditing ? (
                                     <TextInput
+                                      type="text"
                                       value={draft[c] ?? ""}
                                       disabled={isPk}
                                       onChange={(e) => {
@@ -323,7 +316,7 @@ export default function AdminPage() {
                                   <Button size="xs" onClick={handleSaveEdit}>
                                     Save
                                   </Button>
-                                  <Button size="xs" variant="light" onClick={resetEditing}>
+                                  <Button size="xs" variant="light" onClick={resetMode}>
                                     Cancel
                                   </Button>
                                 </Group>
@@ -362,20 +355,4 @@ export default function AdminPage() {
       </Stack>
     </Container>
   );
-}
-
-function formatCell(v: any) {
-  if (v === null || v === undefined) return "—";
-  if (typeof v === "boolean") return v ? "true" : "false";
-  if (typeof v === "object") return JSON.stringify(v);
-  return String(v);
-}
-
-function normalizePayloadForSubmit(payload: Record<string, any>) {
-  const out: Record<string, any> = {};
-  for (const [k, v] of Object.entries(payload)) {
-    if (v === "" || v === null || v === undefined) continue;
-    out[k] = v;
-  }
-  return out;
 }

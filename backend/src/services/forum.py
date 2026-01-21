@@ -65,23 +65,10 @@ async def get_future_forum_schedule(*, db, weeks: int = 54) -> List[ForumSchedul
         ov = override_by_week.get(k)
 
         if ov:
-            schedule.append({
-                "id": ov.id,
-                "name": ov.name,
-                "date_time": ov.date_time,
-                "team_name": ov.team_name,
-                "minute_length": minute_length,
-                "source": "override",
-            })
+            schedule.append(ForumScheduleResult(id=ov.id, name=ov.name, date_time=ov.date_time, team_name=ov.team_name, minute_length=minute_length, source="override"))
         else:
             team_name = team_cycle[i % len(team_cycle)]
-            schedule.append({
-                "id": None,
-                "name": "Forum",
-                "date_time": generated_dt,
-                "team_name": team_name,
-                "minute_length": minute_length,
-                "source": "generated",
-            })
-    schedule.sort(key=lambda x: x["date_time"])
+            schedule.append(ForumScheduleResult(id=None, name="Forum", date_time=generated_dt, team_name=team_name, minute_length=minute_length, source="generated"))
+
+    schedule.sort(key=lambda x: x.date_time)
     return schedule

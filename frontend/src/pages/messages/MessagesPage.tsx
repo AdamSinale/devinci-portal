@@ -8,11 +8,11 @@ import {
 } from "@mantine/core";
 import PortalShell from "../components/PortalShell";
 import { useAsync } from "../components/handlers";
-import { fetchMessages } from "../../api/user";
+import { getMessages } from "../../api/user";
 import type { Message } from "../../api/user";
 
 export default function MessagesPage() {
-  const { data, loading, err } = useAsync<Message[]>(fetchMessages, []);
+  const { data, loading, err } = useAsync<Message[]>(getMessages, []);
 
   return (
     <PortalShell title="Messages" subtitle="Board & announcements">

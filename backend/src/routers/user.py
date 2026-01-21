@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Any, Dict, Optional
+from typing import Optional
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from src.auth.deps import require_admin
 from src.db import get_db
@@ -47,7 +48,13 @@ async def create_user(payload: UserCreate, db: AsyncSession = Depends(get_db), _
 
 @users_router.patch("/{t_name}")
 async def update_user(t_name: str, payload: UserUpdate, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
-    if payload.password_hash:
+    result = await db.execute(select(User).where(User.t_name == t_name))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise SystemError(404, "User not found")
+
+    if payload.password_hash and payload.password_hash != user.password_hash:
         payload.password_hash = hash_password(payload.password_hash)
     return await update_one(db, User, t_name, payload)
 

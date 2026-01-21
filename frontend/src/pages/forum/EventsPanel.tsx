@@ -35,7 +35,7 @@ export default function EventsPanel() {
                 <Text size="sm" fw={600}>{ev.name}</Text>
                 <Text size="sm">{toLocal(ev.date_time)}</Text>
                 <Text size="xs" c="dimmed">
-                  team_name={ev.team_name} • event_id={ev.id}
+                  team_name={ev.team_name}
                 </Text>
               </Card>
             ))

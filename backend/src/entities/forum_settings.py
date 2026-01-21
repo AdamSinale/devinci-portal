@@ -21,7 +21,8 @@ class ForumSettings(Base):
 
 
 class ForumScheduleResult(BaseModel):
-    id: Optional[int] = None       
+    id: Optional[int] = None  
+    name: str     
     date_time: datetime
     team_name: str
 
