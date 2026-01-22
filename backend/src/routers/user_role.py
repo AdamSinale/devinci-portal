@@ -12,7 +12,7 @@ from src.db import get_db
 
 from src.entities.user_role import UserRole
 
-from backend.src.services.common_actions import (list_all, create_one, update_one, delete_one)
+from src.services.common_actions import (list_all, create_one, update_one, delete_one)
 
 class UserRoleCreate(BaseModel):
     user_t_name: str

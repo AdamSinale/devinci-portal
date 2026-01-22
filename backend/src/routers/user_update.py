@@ -11,7 +11,7 @@ from src.db import get_db
 
 from src.entities.user_update import UserUpdate
 
-from backend.src.services.common_actions import (list_all, create_one, update_one, delete_one)
+from src.services.common_actions import (list_all, create_one, update_one, delete_one)
 
 class UserUpdateCreate(BaseModel):
     user_t_name: str

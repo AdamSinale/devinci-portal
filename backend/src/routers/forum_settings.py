@@ -12,8 +12,8 @@ from src.auth.deps import require_admin
 from src.entities.forum_settings import ForumSettings, ForumScheduleResult
 from src.db import get_db
 
-from backend.src.services.unique_actions import (get_future_forum_schedule)
-from backend.src.services.common_actions import (list_all, update_one)
+from src.services.unique_actions import (get_future_forum_schedule)
+from src.services.common_actions import (list_all, update_one)
 
 class ForumSettingsUpdate(BaseModel):
     first_forum_datetime: datetime | None = None

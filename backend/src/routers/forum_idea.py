@@ -11,8 +11,8 @@ from src.auth.deps import require_admin
 from src.entities.forum_idea import ForumIdea, ForumIdeaResult
 from src.db import get_db
 
-from backend.src.services.unique_actions import (get_team_forum_ideas)
-from backend.src.services.common_actions import (list_all, create_one, update_one, delete_one)
+from src.services.unique_actions import (get_team_forum_ideas)
+from src.services.common_actions import (list_all, create_one, update_one, delete_one)
 
 class ForumIdeaCreate(BaseModel):
     idea: str

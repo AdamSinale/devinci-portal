@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.auth.deps import require_admin
 from src.entities.team import Team
 
-from backend.src.services.common_actions import (list_all, create_one, update_one, delete_one)
+from src.services.common_actions import (list_all, create_one, update_one, delete_one)
 
 from src.db import get_db
 

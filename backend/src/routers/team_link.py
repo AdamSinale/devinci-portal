@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.auth.deps import require_admin
 from src.entities.team_link import TeamLink
 
-from backend.src.services.common_actions import (list_all, create_one, update_one, delete_one)
-from backend.src.services.unique_actions import get_teams_links
+from src.services.common_actions import (list_all, create_one, update_one, delete_one)
+from src.services.unique_actions import get_teams_links
 
 from src.db import get_db
 
