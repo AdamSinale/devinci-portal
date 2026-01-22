@@ -14,11 +14,7 @@ export default function PortalShell({ title, subtitle, children }: Props) {
         <Group justify="space-between" align="flex-end" mb="md">
           <div>
             <Title order={2}>{title}</Title>
-            {subtitle ? (
-              <Text c="dimmed" size="sm">
-                {subtitle}
-              </Text>
-            ) : null}
+            {subtitle ? (<Text c="dimmed" size="sm">{subtitle}</Text>) : null}
           </div>
 
           <Button component={Link} to="/" variant="light">

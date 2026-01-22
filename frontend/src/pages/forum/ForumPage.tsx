@@ -1,24 +1,15 @@
-import { Container, Group, SimpleGrid, Text, Title } from "@mantine/core";
+import { SimpleGrid } from "@mantine/core";
 import IdeasPanel from "./IdeasPanel";
-import EventsPanel from "./EventsPanel";
+import PortalShell from "../components/PortalShell";
+import EventsPanel from "./ForumEventsPanel";
 
 export default function ForumPage() {
-
   return (
-    <div className="page">
-      <Container size="lg">
-        <Group justify="space-between" align="flex-end" mb="md">
-          <div>
-            <Title order={2}>Forum</Title>
-            <Text c="dimmed">Independent panels with local loading</Text>
-          </div>
-        </Group>
-
+    <PortalShell title="Forum" subtitle="Independent panels with local loading">
         <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
           <IdeasPanel />
           <EventsPanel />
         </SimpleGrid>
-      </Container>
-    </div>
+    </PortalShell>
   );
 }

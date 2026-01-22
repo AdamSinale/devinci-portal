@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from src.entities.team import Team
     from src.entities.role import Role
     from src.entities.message import Message
-    from src.entities.user_event import UserEvent
+    from src.entities.user_update import UserUpdate
     from src.entities.user_role import UserRole
     from src.entities.forum_idea import ForumIdea
 
@@ -36,5 +36,5 @@ class User(Base):
     roles: Mapped[List["Role"]] = relationship(secondary="user_roles", back_populates="users", viewonly=True)
 
     messages: Mapped[List["Message"]] = relationship(back_populates="user")
-    user_events: Mapped[List["UserEvent"]] = relationship(back_populates="user")
+    user_updates: Mapped[List["UserUpdate"]] = relationship(back_populates="user")
     forum_ideas: Mapped[List["ForumIdea"]] = relationship(back_populates="user")

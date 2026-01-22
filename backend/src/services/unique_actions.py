@@ -10,10 +10,16 @@ from src.entities.team import Team
 from src.entities.forum_settings import ForumScheduleResult, ForumSettings
 from src.entities.forum_idea import ForumIdea, ForumIdeaResult
 from src.entities.forum_event import ForumEvent, ForumEventResult
+from src.entities.team_link import TeamLink, TeamLinkResult
 from zoneinfo import ZoneInfo
 
 from datetime import datetime
 
+
+async def get_teams_links(*, db: AsyncSession, team_name: str) -> List[TeamLinkResult]:
+    stmt = select(TeamLink).where(TeamLink.team_name == team_name)
+    res = await db.execute(stmt)
+    return [TeamLinkResult(tl) for tl in res.scalars().all()]
 
 async def get_team_forum_ideas(*, db: AsyncSession, team_name: str) -> List[ForumIdeaResult]:
     stmt = select(ForumIdea).where(ForumIdea.team_name == team_name).order_by(ForumIdea.id.desc())
@@ -25,7 +31,6 @@ async def get_future_forum_events(*, db: AsyncSession) -> List[ForumEventResult]
     stmt = select(ForumEvent).where(ForumEvent.date_time > now).order_by(ForumEvent.date_time.asc())
     res = await db.execute(stmt)
     return res.scalars().all()
-
 
 LOCAL_TZ = ZoneInfo("Asia/Jerusalem")
 def _week_key_sun_to_sat(dt: datetime) -> str:

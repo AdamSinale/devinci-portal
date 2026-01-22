@@ -1,7 +1,7 @@
 
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
-from sqlalchemy import Integer, String 
+from sqlalchemy import String 
 from sqlalchemy.orm import Mapped, relationship, mapped_column  # mapped_column newer,better than Column (defines python type, defines DB column)
 
 from src.entities.base import Base

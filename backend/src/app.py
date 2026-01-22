@@ -38,6 +38,27 @@ async def init_db_and_seed() -> None:
         if not existing:
             db.add(ForumSettings(id=1, first_forum_datetime=date.today(), forum_minute_length=60))
 
+            ##########  DELETE  #############
+            ##########  DELETE  #############
+            ##########  DELETE  #############
+            from src.entities.team import Team
+            from src.entities.message import Message
+            from src.entities.user_update import UserUpdate
+            from datetime import datetime
+            db.add(Team(name="team1", description="Team 1 Description", order=1))
+            db.add(Team(name="team2", description="Team 2 Description", order=2))
+            db.add(Team(name="team3", description="Team 3 Description", order=3))
+            db.add(Team(name="team4", description="Team 4 Description", order=4))
+            db.add(User(t_name="t_idan", name="idan g", password_hash=hash_password("idan1234"), birthday=date(1990, 1, 1), release_date=date(2030, 1, 1), joined_date=date(2020, 1, 1)))
+            db.add(User(t_name="t_haim", name="haim n", password_hash=hash_password("haim1234"), birthday=date(1990, 1, 1), release_date=date(2030, 2, 2), joined_date=date(2020, 2, 2), team_name="team1"))
+            db.add(Message(title="hi1", message="hello1", user_t_name="t_haim", date_time=datetime(2024, 1, 1, 10, 0, 0)))
+            db.add(Message(title="hi2", message="hello2", user_t_name="t_idan", date_time=datetime(2024, 1, 1, 11, 0, 0)))
+            db.add(UserUpdate(user_t_name="t_adam_si", update="agnash", start_date_time=datetime(2026, 1, 15, 7, 0), end_date_time=datetime(2026, 1, 22, 17, 0)))
+            db.add(UserUpdate(user_t_name="t_haim", update="gimelim", start_date_time=datetime(2026, 1, 11, 7, 0), end_date_time=datetime(2026, 1, 13, 17, 0)))
+            ##########  DELETE  #############
+            ##########  DELETE  #############
+            ##########  DELETE  #############
+
         await db.commit()
 
 @asynccontextmanager

@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 class ForumIdea(Base):
     __tablename__ = "forum_ideas"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     idea: Mapped[str] = mapped_column(Text, nullable=False)
 
     user_t_name: Mapped[str] = mapped_column(ForeignKey("users.t_name", ondelete="CASCADE"), nullable=False)

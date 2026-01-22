@@ -1,6 +1,5 @@
-import { Button, Card, SimpleGrid, Text, Title } from "@mantine/core";
+import { Button, Card, Group, SimpleGrid, Text, Title } from "@mantine/core";
 import { Link } from "react-router-dom";
-import Tile from "../components/Tile";
 import "./mainPage.css";
 
 export default function MainPage() {
@@ -29,11 +28,22 @@ export default function MainPage() {
       <Title order={1} fw={900} size={56} ta="center" mb="md">
         Devinci Portal
       </Title>
-      
+
       <div className="dashGrid">
         {tiles.map((t) => (
           <div key={t.to} style={{ gridArea: t.area }}>
-            <Tile title={t.title} description={t.description} to={t.to} />
+            <Card component={Link} to={t.to} withBorder radius="md" p="lg" className="tile">
+              <Group justify="space-between" mb={6}>
+                <Text fw={700}>{t.title}</Text>
+                <Text size="xs" c="dimmed">
+                  Open →
+                </Text>
+              </Group>
+
+              <Text size="sm" c="dimmed">
+                {t.description}
+              </Text>
+            </Card>
           </div>
         ))}
 

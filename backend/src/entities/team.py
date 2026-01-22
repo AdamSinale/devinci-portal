@@ -23,3 +23,4 @@ class Team(Base):
     links: Mapped[List["TeamLink"]] = relationship(back_populates="team")
     forum_ideas: Mapped[List["ForumIdea"]] = relationship(back_populates="team")
     forum_events: Mapped[List["ForumEvent"]] = relationship(back_populates="team")
+

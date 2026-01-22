@@ -3,32 +3,23 @@ import {
   Alert,
   Button,
   Card,
-  Container,
   Group,
   Loader,
   Select,
-  Stack,
   Table,
   Text,
   TextInput,
-  Title,
 } from "@mantine/core";
 
-import {
-  getAdminEntities,
-  getAdminRows,
-  createAdminRow,
-  updateAdminRow,
-  deleteAdminRow,
-} from "../../api/admin";
-
-import { extractErrorMessage, formatCell, normalizePayloadForSubmit, mapRowForEdit } from "./utils";
+import { getAdminEntities, getAdminRows, createAdminRow, updateAdminRow, deleteAdminRow } from "../../api/admin";
+import PortalShell from "../components/PortalShell";
+import { extractErrorMessage, formatCell, normalizePayloadForSubmit, mapRowForEdit } from "../../api/utils";
 
 type Row = Record<string, any>;  // object for each table row, key = column name, value = cell value
 
 export default function AdminPage() {
   const [entities, setEntities] = useState<string[]>([]);                   // entity names list
-  const [selectedEntity, setSelectedEntity] = useState<string|null>(null);  // currently selected entity
+  const [selectedEntity, setSelectedEntity] = useState<string | null>(null);  // currently selected entity
 
   const [columns, setColumns] = useState<string[]>([]);                     // columns for selected entity
   const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);             // primary key columns for selected entity
@@ -57,7 +48,7 @@ export default function AdminPage() {
   async function loadEntities() {                                   // load entity names list
     setErr(null);                                                   // removes previous error
     setLoadingEntities(true);                                       // set loading state
-    try {                                        
+    try {
       const list = await getAdminEntities();                        // entity names from API
       setEntities(list);                                            // set given names to entity list state
       setSelectedEntity((prev) => prev ?? list[0] ?? null);         // select first entity if none selected
@@ -171,188 +162,174 @@ export default function AdminPage() {
   const busy = loadingEntities || loadingRows;  // busy state when loading entities or rows
 
   return (
-    <Container size="xl" py="md">
-      <Stack gap="md">
-        <Group justify="space-between" align="center">
-          <div>
-            <Title order={2}>Admin</Title>
-            <Text c="dimmed" size="sm">
-              Browse entities, add/edit/delete rows.
-            </Text>
-          </div>
+    <PortalShell title="Admin" subtitle="Browse entities, add/edit/delete rows.">
+      <Group>
+        <Button variant="light" onClick={() => selectedEntity ? void loadRows(selectedEntity) : void loadEntities()} disabled={busy}>
+          Refresh
+        </Button>
+        <Button onClick={startCreate} disabled={!selectedEntity || columns.length === 0 || mode !== "none" || loadingRows}>
+          + Add row
+        </Button>
+      </Group>
 
-          <Group>
-            <Button variant="light" onClick={() => selectedEntity ? void loadRows(selectedEntity) : void loadEntities()} disabled={busy}>
-              Refresh
-            </Button>
+      {err && (
+        <Alert color="red" title="Error">
+          {err}
+        </Alert>
+      )}
 
-            <Button onClick={startCreate} disabled={!selectedEntity || columns.length === 0 || mode !== "none" || loadingRows}>
-              + Add row
-            </Button>
-          </Group>
+      <Card withBorder radius="md" p="md">
+        <Group justify="space-between" align="flex-end">
+          <Select
+            label="Entity"
+            data={entityOptions}
+            value={selectedEntity}
+            onChange={setSelectedEntity}
+            searchable
+            nothingFoundMessage="No entities"
+            disabled={loadingEntities}
+            w={320}
+          />
+          {busy && <Loader size="sm" />}
         </Group>
 
-        {err && (
-          <Alert color="red" title="Error">
-            {err}
-          </Alert>
-        )}
+        <div style={{ marginTop: 16 }}>
+          {!selectedEntity ? (
+            <Text c="dimmed">No entity selected.</Text>
+          ) : columns.length === 0 ? (
+            <Text c="dimmed">No columns found.</Text>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <Table striped highlightOnHover withTableBorder withColumnBorders>
+                <Table.Thead>
+                  <Table.Tr>
+                    {columns.map((c) => (
+                      <Table.Th key={c}>
+                        {c}
+                        {primaryKeys.includes(c) ? " (PK)" : ""}
+                      </Table.Th>
+                    ))}
+                    <Table.Th style={{ width: 240 }}>Actions</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
 
-        <Card withBorder radius="md" p="md">
-          <Group justify="space-between" align="flex-end">
-            <Select
-              label="Entity"
-              data={entityOptions}
-              value={selectedEntity}
-              onChange={setSelectedEntity}
-              searchable
-              nothingFoundMessage="No entities"
-              disabled={loadingEntities}
-              w={320}
-            />
-            {busy && <Loader size="sm" />}
-          </Group>
-
-          <div style={{ marginTop: 16 }}>
-            {!selectedEntity ? (
-              <Text c="dimmed">No entity selected.</Text>
-            ) : columns.length === 0 ? (
-              <Text c="dimmed">No columns found.</Text>
-            ) : (
-              <div style={{ overflowX: "auto" }}>
-                <Table striped highlightOnHover withTableBorder withColumnBorders>
-                  <Table.Thead>
+                <Table.Tbody>
+                  {mode === "create" && (
                     <Table.Tr>
                       {columns.map((c) => (
-                        <Table.Th key={c}>
-                          {c}
-                          {primaryKeys.includes(c) ? " (PK)" : ""}
-                        </Table.Th>
+                        <Table.Td key={c}>
+                          <TextInput
+                            value={draft[c] ?? ""}
+                            placeholder={`Edit ${c}`}
+                            onChange={(e) => {
+                              const value = e.currentTarget.value;
+                              setDraft((d) => ({ ...d, [c]: value }));
+                            }}
+                            size="xs"
+                          />
+                        </Table.Td>
                       ))}
-                      <Table.Th style={{ width: 240 }}>Actions</Table.Th>
+                      <Table.Td>
+                        <Group gap="xs">
+                          <Button size="xs" onClick={handleCreate}>
+                            Create
+                          </Button>
+                          <Button size="xs" variant="light" onClick={resetMode}>
+                            Cancel
+                          </Button>
+                        </Group>
+                      </Table.Td>
                     </Table.Tr>
-                  </Table.Thead>
+                  )}
 
-                  <Table.Tbody>
-                    {/* CREATE */}
-                    {mode === "create" && (
-                      <Table.Tr>
-                        {columns.map((c) => (
-                          <Table.Td key={c}>
-                            <TextInput
-                              value={draft[c] ?? ""}
-                              placeholder={`Edit ${c}`}
-                              onChange={(e) => {
-                                const value = e.currentTarget.value;
-                                setDraft((d) => ({ ...d, [c]: value }));
-                              }}
-                              size="xs"
-                            />
+                  {loadingRows ? (
+                    <Table.Tr>
+                      <Table.Td colSpan={columns.length + 1}>
+                        <Group>
+                          <Loader size="sm" />
+                          <Text c="dimmed">Loading rows...</Text>
+                        </Group>
+                      </Table.Td>
+                    </Table.Tr>
+                  ) : rows.length === 0 ? (
+                    <Table.Tr>
+                      <Table.Td colSpan={columns.length + 1}>
+                        <Text c="dimmed">No rows found.</Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  ) : (
+                    rows.map((r, idx) => {
+                      const rid = buildRowId(r);
+                      const isEditing = mode === "edit" && rid !== null && rid === editingRowId;
+
+                      return (
+                        <Table.Tr key={rid ?? idx}>
+                          {columns.map((c) => {
+                            const isPk = primaryKeys.includes(c);
+                            return (
+                              <Table.Td key={c} onDoubleClick={() => !isEditing && startEdit(r)}>
+                                {isEditing ? (
+                                  <TextInput
+                                    type="text"
+                                    value={draft[c] ?? ""}
+                                    disabled={isPk}
+                                    onChange={(e) => {
+                                      const value = e.currentTarget.value;
+                                      setDraft((d) => ({ ...d, [c]: value }));
+                                    }}
+                                    size="xs"
+                                  />
+                                ) : (
+                                  <Text size="sm" lineClamp={2}>
+                                    {formatCell(r[c])}
+                                  </Text>
+                                )}
+                              </Table.Td>
+                            );
+                          })}
+
+                          <Table.Td>
+                            {isEditing ? (
+                              <Group gap="xs">
+                                <Button size="xs" onClick={handleSaveEdit}>
+                                  Save
+                                </Button>
+                                <Button size="xs" variant="light" onClick={resetMode}>
+                                  Cancel
+                                </Button>
+                              </Group>
+                            ) : (
+                              <Group gap="xs">
+                                <Button
+                                  size="xs"
+                                  variant="light"
+                                  onClick={() => startEdit(r)}
+                                  disabled={mode !== "none"}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="xs"
+                                  color="red"
+                                  variant="light"
+                                  onClick={() => handleDelete(r)}
+                                  disabled={mode !== "none"}
+                                >
+                                  Delete
+                                </Button>
+                              </Group>
+                            )}
                           </Table.Td>
-                        ))}
-                        <Table.Td>
-                          <Group gap="xs">
-                            <Button size="xs" onClick={handleCreate}>
-                              Create
-                            </Button>
-                            <Button size="xs" variant="light" onClick={resetMode}>
-                              Cancel
-                            </Button>
-                          </Group>
-                        </Table.Td>
-                      </Table.Tr>
-                    )}
-
-                    {/* ROWS */}
-                    {loadingRows ? (
-                      <Table.Tr>
-                        <Table.Td colSpan={columns.length + 1}>
-                          <Group>
-                            <Loader size="sm" />
-                            <Text c="dimmed">Loading rows...</Text>
-                          </Group>
-                        </Table.Td>
-                      </Table.Tr>
-                    ) : rows.length === 0 ? (
-                      <Table.Tr>
-                        <Table.Td colSpan={columns.length + 1}>
-                          <Text c="dimmed">No rows found.</Text>
-                        </Table.Td>
-                      </Table.Tr>
-                    ) : (
-                      rows.map((r, idx) => {
-                        const rid = buildRowId(r);
-                        const isEditing = mode === "edit" && rid !== null && rid === editingRowId;
-
-                        return (
-                          <Table.Tr key={rid ?? idx}>
-                            {columns.map((c) => {
-                              const isPk = primaryKeys.includes(c);
-                              return (
-                                <Table.Td key={c} onDoubleClick={() => !isEditing && startEdit(r)}>
-                                  {isEditing ? (
-                                    <TextInput
-                                      type="text"
-                                      value={draft[c] ?? ""}
-                                      disabled={isPk}
-                                      onChange={(e) => {
-                                        const value = e.currentTarget.value;
-                                        setDraft((d) => ({ ...d, [c]: value }));
-                                      }}
-                                      size="xs"
-                                    />
-                                  ) : (
-                                    <Text size="sm" lineClamp={2}>
-                                      {formatCell(r[c])}
-                                    </Text>
-                                  )}
-                                </Table.Td>
-                              );
-                            })}
-
-                            <Table.Td>
-                              {isEditing ? (
-                                <Group gap="xs">
-                                  <Button size="xs" onClick={handleSaveEdit}>
-                                    Save
-                                  </Button>
-                                  <Button size="xs" variant="light" onClick={resetMode}>
-                                    Cancel
-                                  </Button>
-                                </Group>
-                              ) : (
-                                <Group gap="xs">
-                                  <Button
-                                    size="xs"
-                                    variant="light"
-                                    onClick={() => startEdit(r)}
-                                    disabled={mode !== "none"}
-                                  >
-                                    Edit
-                                  </Button>
-                                  <Button
-                                    size="xs"
-                                    color="red"
-                                    variant="light"
-                                    onClick={() => handleDelete(r)}
-                                    disabled={mode !== "none"}
-                                  >
-                                    Delete
-                                  </Button>
-                                </Group>
-                              )}
-                            </Table.Td>
-                          </Table.Tr>
-                        );
-                      })
-                    )}
-                  </Table.Tbody>
-                </Table>
-              </div>
-            )}
-          </div>
-        </Card>
-      </Stack>
-    </Container>
+                        </Table.Tr>
+                      );
+                    })
+                  )}
+                </Table.Tbody>
+              </Table>
+            </div>
+          )}
+        </div>
+      </Card>
+    </PortalShell>
   );
 }

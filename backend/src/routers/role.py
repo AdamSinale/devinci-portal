@@ -1,7 +1,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Optional
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +11,7 @@ from src.db import get_db
 
 from src.entities.role import Role
 
-from src.services.actions import (list_all, create_one, update_one, delete_one)
+from backend.src.services.common_actions import (list_all, create_one, update_one, delete_one)
 
 class RoleCreate(BaseModel):
     name: str

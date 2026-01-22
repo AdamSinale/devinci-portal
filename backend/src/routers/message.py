@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +11,7 @@ from src.db import get_db
 
 from src.entities.message import Message
 
-from src.services.actions import (list_all, create_one, update_one, delete_one)
+from backend.src.services.common_actions import (list_all, create_one, update_one, delete_one)
 
 class MessageCreate(BaseModel):
     title: str

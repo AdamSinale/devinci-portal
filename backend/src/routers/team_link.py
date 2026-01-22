@@ -1,7 +1,6 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,7 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.auth.deps import require_admin
 from src.entities.team_link import TeamLink
 
-from src.services.actions import (list_all, create_one, update_one, delete_one)
+from backend.src.services.common_actions import (list_all, create_one, update_one, delete_one)
+from backend.src.services.unique_actions import get_teams_links
 
 from src.db import get_db
 
@@ -29,6 +29,10 @@ team_links_router = APIRouter(prefix="/team_links", tags=["team_links"])
 @team_links_router.get("")
 async def list_team_links(db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
     return await list_all(db, TeamLink)
+
+@team_links_router.get("/{team_name}")
+async def list_teams_link(team_name: str, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    return await get_teams_links(db, team_name=team_name)
 
 @team_links_router.post("")
 async def create_team_link(payload: TeamLinkCreate, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):

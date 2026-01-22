@@ -1,9 +1,11 @@
+import { is_iso_string, convert_iso_to_datetime } from "./dates_utils";
+
 
 export function formatCell(v: any) {
   if (v === null || v === undefined) return "—";
   if (typeof v === "boolean") return v ? "true" : "false";
-  if (looksIsoDateString(v)) {
-    const local = isoToDateTimeLocal(v);
+  if (is_iso_string(v)) {
+    const local = convert_iso_to_datetime(v);
     return local.replace("T", " ");
   }
   if (typeof v === "object") return JSON.stringify(v);
@@ -40,23 +42,8 @@ export function extractErrorMessage(e: any): string {
   return e?.message ?? "Request failed";
 }
 
-export function looksIsoDateString(v: any) {
-  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}t\d{2}:\d{2}/i.test(v);
-}
-
-export function isoToDateTimeLocal(v: any) {
-  if (typeof v !== "string") return v;
-
-  const m = v.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
-  if (m) return `${m[1]} ${m[2]}`;
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
-
-  return v;
-}
-
 export function mapRowForEdit(row: Record<string, any>) {
   const out: Record<string, any> = {};
-  for (const [k, v] of Object.entries(row)) out[k] = isoToDateTimeLocal(v);
+  for (const [k, v] of Object.entries(row)) out[k] = convert_iso_to_datetime(v);
   return out;
 }

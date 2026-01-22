@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional, Literal
+from typing import List
 from datetime import datetime
 
 from pydantic import BaseModel
@@ -12,8 +12,8 @@ from src.auth.deps import require_admin
 from src.entities.forum_settings import ForumSettings, ForumScheduleResult
 from src.db import get_db
 
-from src.services.forum import (get_future_forum_schedule)
-from src.services.actions import (list_all, update_one)
+from backend.src.services.unique_actions import (get_future_forum_schedule)
+from backend.src.services.common_actions import (list_all, update_one)
 
 class ForumSettingsUpdate(BaseModel):
     first_forum_datetime: datetime | None = None

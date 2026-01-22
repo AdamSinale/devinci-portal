@@ -12,8 +12,8 @@ from src.auth.deps import require_admin
 from src.entities.forum_event import ForumEvent, ForumEventResult
 from src.db import get_db
 
-from src.services.forum import (get_future_forum_events)
-from src.services.actions import (list_all, create_one, update_one, delete_one)
+from backend.src.services.unique_actions import (get_future_forum_events)
+from backend.src.services.common_actions import (list_all, create_one, update_one, delete_one)
 
 class ForumEventCreate(BaseModel):
     date_time: datetime

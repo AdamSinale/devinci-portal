@@ -1,7 +1,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Optional
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.auth.deps import require_admin
 from src.entities.team import Team
 
-from src.services.actions import (list_all, create_one, update_one, delete_one)
+from backend.src.services.common_actions import (list_all, create_one, update_one, delete_one)
 
 from src.db import get_db
 

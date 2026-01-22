@@ -5,13 +5,13 @@ import {
 } from "@mantine/core";
 import PortalShell from "../components/PortalShell";
 import { useAsync } from "../components/handlers";
-import { getUserDates } from "../../api/user";
+import { getUsers } from "../../api/user";
 import type { User } from "../../api/user";
 import { get_sorted_birthday, get_sorted_releases, EventsPanel } from "./EventsPanels";
 
 
 export default function EventsPage() {
-  const { data, loading, err } = useAsync<User[]>(getUserDates, []);
+  const { data, loading, err } = useAsync<User[]>(getUsers, []);
   const users = data ?? [];
 
   const birthdaysSorted = get_sorted_birthday(users);

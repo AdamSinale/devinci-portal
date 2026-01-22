@@ -19,7 +19,7 @@ const PATHS: Record<string, string> = {
   forum_events: "forum_events",
   forum_settings: "forum_settings",
   users: "users",
-  user_events: "user_events",
+  user_updates: "user_updates",
   messages: "messages",
   user_roles: "user_roles",
   roles: "roles",

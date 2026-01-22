@@ -2,10 +2,7 @@ import { Alert, Card, Group, Loader, Stack, Text } from "@mantine/core";
 import { getFutureForumSchedule  } from "../../api/forum";
 import type { ForumScheduleItem  } from "../../api/forum";
 import { useAsync } from "../components/handlers";
-
-function toLocal(iso: string) {
-  return new Date(iso).toLocaleString();
-}
+import { convert_iso_to_Date_string } from "../../api/dates_utils";
 
 export default function EventsPanel() {
   const { data, loading, err, reload } = useAsync<ForumScheduleItem[]>(
@@ -33,7 +30,7 @@ export default function EventsPanel() {
             data!.map((ev) => (
               <Card key={ev.id} withBorder radius="md" p="sm" className="miniCard">
                 <Text size="sm" fw={600}>{ev.name}</Text>
-                <Text size="sm">{toLocal(ev.date_time)}</Text>
+                <Text size="sm">{convert_iso_to_Date_string(ev.date_time)}</Text>
                 <Text size="xs" c="dimmed">
                   team_name={ev.team_name}
                 </Text>
