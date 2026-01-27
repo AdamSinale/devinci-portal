@@ -11,9 +11,11 @@ from src.routers.team_link import team_links_router
 from src.routers.forum_idea import forum_ideas_router
 from src.routers.forum_event import forum_events_router
 from src.routers.forum_settings import forum_settings_router
+from src.routers.cleaning_duties import cleaning_duties_router
 
 main_router = APIRouter(prefix="/api")
 
+main_router.include_router(cleaning_duties_router)
 main_router.include_router(forum_events_router)
 main_router.include_router(forum_ideas_router)
 main_router.include_router(forum_settings_router)
