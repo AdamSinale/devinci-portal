@@ -1,5 +1,5 @@
 import { Card, Text, Stack, Group, Badge, Divider } from "@mantine/core";
-import type { UserUpdate } from "../../api/user";
+import type { UserUpdate } from "../../api/http";
 import { convert_iso_to_Date, set_date_IL, today_Date } from "../../api/dates_utils";
 
 export type UpdateRow = { e: UserUpdate; start: Date; end: Date };

@@ -24,7 +24,7 @@ forum_settings_router = APIRouter(prefix="/forum_settings", tags=["forum"])
 
 @forum_settings_router.get("/futureForumSchedule", response_model=List[ForumScheduleResult])
 async def future_forum_schedule(db: Session = Depends(get_db)):
-    return await get_future_forum_schedule(db=db, weeks=54)
+    return await get_future_forum_schedule(db, 54)
 
 @forum_settings_router.get("")
 async def get_forum_settings(db: AsyncSession = Depends(get_db), _=Depends(require_admin)):

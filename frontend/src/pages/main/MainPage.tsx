@@ -1,8 +1,19 @@
-import { Button, Card, Group, SimpleGrid, Text, Title } from "@mantine/core";
+import { Button, Card, Group, SimpleGrid, Text, Title, Loader } from "@mantine/core";
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { getTeams, type Team } from "../../api/http";
 import "./mainPage.css";
 
 export default function MainPage() {
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getTeams()
+      .then(setTeams)
+      .finally(() => setLoading(false));
+  }, []);
+
   const tiles = [
     { title: "Cleaning", description: "Cleaning & tasks", to: "/cleaning", area: "cleaning" },
     { title: "Messages", description: "Inbox & notifications", to: "/messages", area: "messages" },
@@ -10,13 +21,6 @@ export default function MainPage() {
     { title: "Events", description: "Schedule and events", to: "/events", area: "events" },
     { title: "Updates", description: "Updates feed", to: "/updates", area: "updates" },
     { title: "Gallery", description: "Photos & media", to: "/gallery", area: "gallery" },
-  ];
-
-  const teams = [
-    { name: "Team 1" },
-    { name: "Team 2" },
-    { name: "Team 3" },
-    { name: "Team 4" },
   ];
 
   return (
@@ -52,16 +56,20 @@ export default function MainPage() {
             Teams
           </Text>
 
-          <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm" verticalSpacing="sm">
-            {teams.map((t) => (
-              <Card key={t.name} component={Link} to={`/teams/${t.name}`} withBorder radius="md" p="md" className="teamCard">
-                <Text fw={700}>{t.name}</Text>
-                <Text size="xs" c="dimmed">
-                  Open →
-                </Text>
-              </Card>
-            ))}
-          </SimpleGrid>
+          {loading && <Loader size="sm" />}
+
+          {!loading && (
+            <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm" verticalSpacing="sm">
+              {teams.map((t) => (
+                <Card key={t.name} component={Link} to={`/teams/${t.name}`} withBorder radius="md" p="md" className="teamCard">
+                  <Text fw={700}>{t.name}</Text>
+                  <Text size="xs" c="dimmed">
+                    Open →
+                  </Text>
+                </Card>
+              ))}
+            </SimpleGrid>
+          )}
         </Card>
       </div>
     </div>

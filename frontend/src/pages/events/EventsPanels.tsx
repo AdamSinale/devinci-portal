@@ -6,7 +6,7 @@ import {
   Badge,
   Divider,
 } from "@mantine/core";
-import type { User } from "../../api/user";
+import type { User } from "../../api/http";
 import { convert_iso_to_Date, set_date_IL, today_Date } from "../../api/dates_utils";
 
 export type EventRow = { user: User; event: Date };

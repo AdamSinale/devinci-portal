@@ -1,7 +1,7 @@
 
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import ForeignKey, Integer, String 
 from sqlalchemy.orm import Mapped, relationship, mapped_column  # mapped_column newer,better than Column (defines python type, defines DB column)
 
@@ -22,8 +22,9 @@ class TeamLink(Base):
 
     
 class TeamLinkResult(BaseModel):
-    def __init__(self, tl: TeamLink):
-        self.id = tl.id
-        self.link = tl.link
-        self.name = tl.name
-        self.team_name = tl.team_name
+    id: int
+    link: str
+    name: str
+    team_name: str
+
+    model_config = ConfigDict(from_attributes=True)

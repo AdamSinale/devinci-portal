@@ -34,7 +34,7 @@ async def list_forum_events(db: AsyncSession = Depends(get_db), _=Depends(requir
 
 @forum_events_router.get("/futureForumEvents", response_model=List[ForumEventResult])
 async def future_forum_events(db: Session = Depends(get_db)):
-    return await get_future_forum_events(db=db)
+    return await get_future_forum_events(db)
 
 @forum_events_router.post("")
 async def create_forum_event(payload: ForumEventCreate, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):

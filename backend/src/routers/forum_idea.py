@@ -34,7 +34,7 @@ async def list_forum_ideas(db: AsyncSession = Depends(get_db), _=Depends(require
 
 @forum_ideas_router.get("/teamForumIdeas", response_model=List[ForumIdeaResult])
 async def team_forum_ideas(team_name: str, db: Session = Depends(get_db)):
-    return await get_team_forum_ideas(db=db, team_name=team_name)
+    return await get_team_forum_ideas(db, team_name)
 
 @forum_ideas_router.post("")
 async def create_forum_idea(payload: ForumIdeaCreate, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):

@@ -32,7 +32,7 @@ async def list_team_links(db: AsyncSession = Depends(get_db), _=Depends(require_
 
 @team_links_router.get("/{team_name}")
 async def list_teams_link(team_name: str, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
-    return await get_teams_links(db, team_name=team_name)
+    return await get_teams_links(db, team_name)
 
 @team_links_router.post("")
 async def create_team_link(payload: TeamLinkCreate, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):

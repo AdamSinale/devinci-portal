@@ -1,6 +1,6 @@
 import { Alert, Card, Group, Loader, Stack, Text } from "@mantine/core";
-import { getFutureForumSchedule  } from "../../api/forum";
-import type { ForumScheduleItem  } from "../../api/forum";
+import { getFutureForumSchedule  } from "../../api/http";
+import type { ForumScheduleItem  } from "../../api/http";
 import { useAsync } from "../components/handlers";
 import { convert_iso_to_Date_string } from "../../api/dates_utils";
 

@@ -1,8 +1,9 @@
+
 import { useParams } from "react-router-dom";
-import { Text, Loader, Card, Group, Button, TextInput, Stack } from "@mantine/core";
+import { Text, Loader, Card, Group, Button, TextInput, Stack, Anchor } from "@mantine/core";
 import { useAsync } from "../components/handlers";
-import { getTeamsLinks, postLink } from "../../api/user";
-import type { TeamLink } from "../../api/user";
+import { getTeamsLinks, postLink } from "../../api/http";
+import type { TeamLink } from "../../api/http";
 import PortalShell from "../components/PortalShell";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../AuthContext";
@@ -19,8 +20,8 @@ export default function TeamPage() {
 
   if (!teamName) { return <div>Team not found</div>; }
 
-  const [newMode, setNewMode] = useState<boolean>(false);     // current mode: none, create, edit
-  const [draft, setDraft] = useState<NewLink>({ link: "", name: "" });                              // draft row created/edited (object textInputs read/write)
+  const [newMode, setNewMode] = useState<boolean>(false);               // current mode: none, create, edit
+  const [draft, setDraft] = useState<NewLink>({ link: "", name: "" });  // draft row created/edited (object textInputs read/write)
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
   const { data, loading, err } = useAsync<TeamLink[]>(
@@ -61,9 +62,9 @@ export default function TeamPage() {
   }
 
   return (
-    <PortalShell title={teamName} subtitle="Team convinient links">
+    <PortalShell title={teamName} subtitle="Team convenient links">
       {loading && <Loader />}
-      {err && <Text c="red">Failed to load messages</Text>}
+      {err && <Text c="red">Failed to load links</Text>}
 
       <Group>
         <Button variant="light" onClick={newLinkForm}>
@@ -111,22 +112,25 @@ export default function TeamPage() {
 
         {team_links.map((team_link) => (
           <Card key={team_link.id} withBorder radius="md" p="lg">
-            <Group justify="space-between" mb="xs">
-              <Text fw={700} size="lg">
-                {team_link.name}
-              </Text>
-              <Text variant="light">
-                {team_link.link}
-              </Text>
-            </Group>
-
+            <Anchor
+              href={team_link.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              fw={700}
+              size="lg"
+              underline="never"
+            >
+              {team_link.name}
+            </Anchor>
           </Card>
         ))}
 
         {team_links.length === 0 && (
-          <Text c="dimmed">No messages yet</Text>
+          <Text c="dimmed">No links yet</Text>
         )}
       </Stack>
     </PortalShell>
   );
+
 }
+

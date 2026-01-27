@@ -16,17 +16,17 @@ from zoneinfo import ZoneInfo
 from datetime import datetime
 
 
-async def get_teams_links(*, db: AsyncSession, team_name: str) -> List[TeamLinkResult]:
+async def get_teams_links(db: AsyncSession, team_name: str) -> List[TeamLinkResult]:
     stmt = select(TeamLink).where(TeamLink.team_name == team_name)
     res = await db.execute(stmt)
-    return [TeamLinkResult(tl) for tl in res.scalars().all()]
+    return [TeamLinkResult.model_validate(tl) for tl in res.scalars().all()]
 
-async def get_team_forum_ideas(*, db: AsyncSession, team_name: str) -> List[ForumIdeaResult]:
+async def get_team_forum_ideas(db: AsyncSession, team_name: str) -> List[ForumIdeaResult]:
     stmt = select(ForumIdea).where(ForumIdea.team_name == team_name).order_by(ForumIdea.id.desc())
     res = await db.execute(stmt)
     return res.scalars().all()
 
-async def get_future_forum_events(*, db: AsyncSession) -> List[ForumEventResult]:
+async def get_future_forum_events(db: AsyncSession) -> List[ForumEventResult]:
     now = datetime.now(timezone.utc)
     stmt = select(ForumEvent).where(ForumEvent.date_time > now).order_by(ForumEvent.date_time.asc())
     res = await db.execute(stmt)
@@ -39,7 +39,7 @@ def _week_key_sun_to_sat(dt: datetime) -> str:
     week_start = (local.date() - timedelta(days=days_since_sunday))
     return week_start.isoformat()
 
-async def get_future_forum_schedule(*, db, weeks: int = 54) -> List[ForumScheduleResult]:
+async def get_future_forum_schedule(db, weeks: int = 54) -> List[ForumScheduleResult]:
     settings = await db.scalar(select(ForumSettings).order_by(ForumSettings.id.desc()).limit(1))
     if not settings:
         return []

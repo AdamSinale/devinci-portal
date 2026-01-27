@@ -1,6 +1,6 @@
 import { Alert, Card, Group, Loader, Stack, Text } from "@mantine/core";
-import { getTeamForumIdeas } from "../../api/forum";
-import type { ForumIdea } from "../../api/forum";
+import { getTeamForumIdeas } from "../../api/http";
+import type { ForumIdea } from "../../api/http";
 import { useAsync } from "../components/handlers";
 import { useAuth } from "../../AuthContext";
 

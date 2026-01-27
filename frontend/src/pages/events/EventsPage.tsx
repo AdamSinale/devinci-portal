@@ -5,8 +5,8 @@ import {
 } from "@mantine/core";
 import PortalShell from "../components/PortalShell";
 import { useAsync } from "../components/handlers";
-import { getUsers } from "../../api/user";
-import type { User } from "../../api/user";
+import { getUsers } from "../../api/http";
+import type { User } from "../../api/http";
 import { get_sorted_birthday, get_sorted_releases, EventsPanel } from "./EventsPanels";
 
 

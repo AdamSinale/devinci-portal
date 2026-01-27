@@ -11,8 +11,8 @@ import {
 } from "@mantine/core";
 import PortalShell from "../components/PortalShell";
 import { useAsync } from "../components/handlers";
-import { getMessages, postMessage } from "../../api/user";
-import type { Message } from "../../api/user";
+import { getMessages, postMessage } from "../../api/http";
+import type { Message } from "../../api/http";
 import { extractErrorMessage } from "../../api/utils";
 import { useAuth } from "../../AuthContext";
 
