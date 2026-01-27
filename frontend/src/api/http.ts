@@ -131,3 +131,50 @@ export async function getFutureForumEvents() {
   const res = await http.get<ForumEvent[]>("/forum_events/futureForumEvents");
   return res.data;
 }
+
+export type CleaningDuty = {
+  id: number;
+  username1: string;
+  username2: string;
+  start_date: string; 
+  end_date: string;   
+};
+
+export type CleaningDutyCreate = Omit<CleaningDuty, "id">;
+export type CleaningDutyUpdate = Partial<CleaningDutyCreate>;
+
+export async function getCleaningDuties(): Promise<CleaningDuty[]> {
+  const res = await axios.get("/api/cleaning/duties");
+  return res.data;
+}
+
+export async function createCleaningDuty(payload: CleaningDutyCreate): Promise<CleaningDuty> {
+  const res = await axios.post("/api/cleaning/duties", payload);
+  return res.data;
+}
+
+export async function updateCleaningDuty(id: number, payload: CleaningDutyUpdate): Promise<CleaningDuty> {
+  const res = await axios.patch(`/api/cleaning/duties/${id}`, payload);
+  return res.data;
+}
+
+export async function deleteCleaningDuty(id: number): Promise<void> {
+  await axios.delete(`/api/cleaning/duties/${id}`);
+}
+
+export type UserEvent = {
+  id: number;
+  username: string;
+  date_time: string;
+};
+
+export async function getUserEventsInRange(
+  username: string,
+  startIso: string,
+  endIso: string
+): Promise<UserEvent[]> {
+  const res = await axios.get("/api/user-events", {
+    params: { username, start: startIso, end: endIso },
+  });
+  return res.data;
+}
