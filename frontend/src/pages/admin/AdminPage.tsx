@@ -14,8 +14,7 @@ import {
 import { getAdminEntities, getAdminRows, createAdminRow, updateAdminRow, deleteAdminRow } from "../../api/admin";
 import PortalShell from "../components/PortalShell";
 import { extractErrorMessage, formatCell, normalizePayloadForSubmit, mapRowForEdit } from "../../api/utils";
-
-type Row = Record<string, any>;  // object for each table row, key = column name, value = cell value
+import type { Row, Mode } from "../../api/admin";
 
 export default function AdminPage() {
   const [entities, setEntities] = useState<string[]>([]);                   // entity names list
@@ -29,7 +28,7 @@ export default function AdminPage() {
   const [loadingRows, setLoadingRows] = useState(false);                    // loading state for rows, false until changing entity
   const [err, setErr] = useState<string | null>(null);                      // error message, if any
 
-  const [mode, setMode] = useState<"none" | "create" | "edit">("none");     // current mode: none, create, edit
+  const [mode, setMode] = useState<Mode>("none");     // current mode: none, create, edit
   const [editingRowId, setEditingRowId] = useState<string | null>(null);    // row id being edited
   const [draft, setDraft] = useState<Row>({});                              // draft row created/edited (object textInputs read/write)
 
@@ -163,14 +162,6 @@ export default function AdminPage() {
 
   return (
     <PortalShell title="Admin" subtitle="Browse entities, add/edit/delete rows.">
-      <Group>
-        <Button variant="light" onClick={() => selectedEntity ? void loadRows(selectedEntity) : void loadEntities()} disabled={busy}>
-          Refresh
-        </Button>
-        <Button onClick={startCreate} disabled={!selectedEntity || columns.length === 0 || mode !== "none" || loadingRows}>
-          + Add row
-        </Button>
-      </Group>
 
       {err && (
         <Alert color="red" title="Error">
@@ -191,6 +182,10 @@ export default function AdminPage() {
             w={320}
           />
           {busy && <Loader size="sm" />}
+          <Button onClick={startCreate} disabled={!selectedEntity || columns.length === 0 || mode !== "none" || loadingRows}>
+            + Add row
+          </Button>
+
         </Group>
 
         <div style={{ marginTop: 16 }}>

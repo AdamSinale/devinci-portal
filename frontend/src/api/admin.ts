@@ -1,6 +1,8 @@
 import { http } from "./http";
 
-type Row = Record<string, any>;
+export type Row = Record<string, any>;
+
+export type Mode = "none" | "create" | "edit";
 
 export type AdminRowsResult = {
   items: Row[];
