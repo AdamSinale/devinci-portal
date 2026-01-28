@@ -4,6 +4,7 @@ export type LoginResult = {
   t_name: string;
   name: string;
   team_name: string | null;
+  roles: string[] | null;
   release_date: string | null;
   access_token: string;
   token_type: "bearer";

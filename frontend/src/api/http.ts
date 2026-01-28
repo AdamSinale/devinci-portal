@@ -99,10 +99,8 @@ export type ForumIdea = {
   team_name: string;
 };
 
-export async function getTeamForumIdeas(teamName: string) {
-  const res = await http.get<ForumIdea[]>("/forum_ideas/teamForumIdeas", {
-    params: { team_name: teamName },
-  });
+export async function getTeamForumIdeas(team_name: string): Promise<ForumIdea[]> {
+  const res = await http.get(`/forum_ideas/teamForumIdeas/${team_name}`);
   return res.data;
 }
 
@@ -138,43 +136,36 @@ export type UserEvent = {
   date_time: string;
 };
 
-export async function getUserEventsInRange(
-  username: string,
-  startIso: string,
-  endIso: string
-): Promise<UserEvent[]> {
-  const res = await axios.get("/api/user-events", {
-    params: { username, start: startIso, end: endIso },
-  });
+export async function get_user_events_in_range(username: string, startIso: string, endIso: string): Promise<UserEvent[]> {
+  const res = await http.get("/api/user_events", {params: { username, start: startIso, end: endIso }});
   return res.data;
 }
 
 export type CleaningDuty = {
-  id: number;
-  username1: string;
-  username2: string;
+  id : number | null;
+  name1: string;
+  name2: string;
   start_date: string; 
   end_date: string;   
 };
-
 export type CleaningDutyCreate = Omit<CleaningDuty, "id">;
 export type CleaningDutyUpdate = Partial<CleaningDutyCreate>;
 
-export async function getCleaningDuties(): Promise<CleaningDuty[]> {
-  const res = await axios.get("/api/cleaning_duties");
+export async function get_cleaning_duties(): Promise<CleaningDuty[]> {
+  const res = await http.get("/cleaning_duties");
+  return res.data.items;
+}
+
+export async function create_cleaning_duty(payload: CleaningDutyCreate): Promise<CleaningDuty> {
+  const res = await http.post("/cleaning_duties", payload);
   return res.data;
 }
 
-export async function createCleaningDuty(payload: CleaningDutyCreate): Promise<CleaningDuty> {
-  const res = await axios.post("/api/cleaning/duties", payload);
+export async function update_cleaning_duty(id: number, payload: CleaningDutyUpdate): Promise<CleaningDuty> {
+  const res = await http.patch(`/cleaning_duties/${id}`, payload);
   return res.data;
 }
 
-export async function updateCleaningDuty(id: number, payload: CleaningDutyUpdate): Promise<CleaningDuty> {
-  const res = await axios.patch(`/api/cleaning/duties/${id}`, payload);
-  return res.data;
-}
-
-export async function deleteCleaningDuty(id: number): Promise<void> {
-  await axios.delete(`/api/cleaning/duties/${id}`);
+export async function delete_cleaning_duty(id: number): Promise<void> {
+  await http.delete(`/cleaning_duties/${id}`);
 }

@@ -10,7 +10,6 @@ from src.auth.deps import require_admin
 from src.db import get_db
 
 from src.entities.message import Message
-
 from src.services.common_actions import (list_all, create_one, update_one, delete_one)
 
 class MessageCreate(BaseModel):

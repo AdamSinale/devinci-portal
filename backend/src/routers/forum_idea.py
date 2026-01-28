@@ -32,7 +32,7 @@ forum_ideas_router = APIRouter(prefix="/forum_ideas", tags=["forum"])
 async def list_forum_ideas(db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
     return await list_all(db, ForumIdea)
 
-@forum_ideas_router.get("/teamForumIdeas", response_model=List[ForumIdeaResult])
+@forum_ideas_router.get("/teamForumIdeas/{team_name}", response_model=List[ForumIdeaResult])
 async def team_forum_ideas(team_name: str, db: Session = Depends(get_db)):
     return await get_team_forum_ideas(db, team_name)
 

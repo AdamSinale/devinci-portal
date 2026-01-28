@@ -6,192 +6,126 @@ import {
   Card,
   Group,
   Loader,
-  Modal,
-  Stack,
   Table,
   Text,
   TextInput,
-  Title,
 } from "@mantine/core";
-import { DatePickerInput, type DatesRangeValue } from "@mantine/dates";
 import { IconPlus, IconPencil, IconTrash } from "@tabler/icons-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PortalShell from "../components/PortalShell";
-import { useAsync } from "../components/handlers";
-import {
-  type CleaningDuty,
-  createCleaningDuty,
-  deleteCleaningDuty,
-  getCleaningDuties,
-  getUserEventsInRange,
-  updateCleaningDuty,
-} from "../../api/http";
-
-type FormState = {
-  id?: number;
-  username1: string;
-  username2: string;
-  range: DatesRangeValue;
-};
-
-type AuthUser = { username: string; roles: string[] };
-function useAuth(): { user: AuthUser | null } {
-  return { user: { username: "adam sin", roles: ["CLEANING_MANAGER"] } };
-}
-
-function toDateOnly(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleDateString();
-}
-
-function toIsoDate(date: Date | string | null): string | null {
-  if (!date) return null;
-  if (typeof date === "string") return date; // כבר ISO
-  return date.toISOString();
-}
+import { useAuth } from "../../AuthContext";
+import { type CleaningDuty, type CleaningDutyCreate, create_cleaning_duty, delete_cleaning_duty, get_cleaning_duties, update_cleaning_duty } from "../../api/http";
+import { extractErrorMessage, normalizePayloadForSubmit } from "../../api/utils";
 
 export default function CleaningPage() {
   const { user } = useAuth();
-  const isManager = !!user?.roles?.includes("CLEANING_MANAGER");
+  const isManager = !!user?.roles?.includes("cleaning manager");
 
-  const { data, loading, err, reload } = useAsync<CleaningDuty[]>(
-    () => getCleaningDuties(),
-    []
-  );
+  const [rows, setRows] = useState<CleaningDuty[]>([]);                              // rows for selected entity
+  const [loading, setLoading] = useState(false);                    // loading state for rows, false until changing entity
+  const [err, setErr] = useState<string | null>(null);                      // error message, if any
 
-  const sorted = useMemo(() => {
-    const rows = [...(data ?? [])];
+  const [mode, setMode] = useState<"none" | "create" | "edit">("none");     // current mode: none, create, edit
+  const [editingRowId, setEditingRowId] = useState<number | null>(null);    // row id being edited
+  const [draft, setDraft] = useState<CleaningDutyCreate>({ name1: "", name2: "", start_date: "", end_date: "" });                              // draft row created/edited (object textInputs read/write)
+
+  const sorted_rows = useMemo(() => {
     rows.sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
     return rows;
-  }, [data]);
+  }, [rows]);
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [busySave, setBusySave] = useState(false);
-  const [formErr, setFormErr] = useState<string | null>(null);
-
-  const [form, setForm] = useState<FormState>({
-    username1: "",
-    username2: "",
-    range: [null, null],
-  });
-
-  function openCreate() {
-    setFormErr(null);
-    setForm({ username1: "", username2: "", range: [null, null] });
-    setModalOpen(true);
-  }
-
-  function openEdit(row: CleaningDuty) {
-    setFormErr(null);
-    setForm({
-      id: row.id,
-      username1: row.username1,
-      username2: row.username2,
-      range: [new Date(row.start_date), new Date(row.end_date)],
-    });
-    setModalOpen(true);
-  }
-
-  async function precheckUserConflicts(username: string, startIso: string, endIso: string) {
-    const events = await getUserEventsInRange(username, startIso, endIso);
-    if (events.length > 0) {
-      // מספיק משפט קצר, בלי לפרט יותר מדי
-      return `למשתמש "${username}" יש אירועים (UserEvent) בטווח התאריכים שנבחר. אי אפשר לשבץ אותו.`;
-    }
-    return null;
-  }
-
-  async function onSave() {
-    setFormErr(null);
-
-    const [start, end] = form.range;
-    if (!form.username1.trim() || !form.username2.trim()) {
-      setFormErr("חייב למלא username1 ו-username2");
-      return;
-    }
-    if (!start || !end) {
-      setFormErr("חייב לבחור טווח תאריכים (start/end)");
-      return;
-    }
-
-    const startIso = toIsoDate(start);
-    const endIso = toIsoDate(end);
-    if (!startIso || !endIso) {
-      throw new Error("בחר טווח תאריכים מלא");
-    }
-    
+  async function loadRows() {                     // load rows for given entity
+    setErr(null);                                               // removes previous error
+    setLoading(true);                                       // set loading state
     try {
-      setBusySave(true);
-
-      // 1) בדיקת התנגשות בפרונט (שני המשתמשים)
-      const conflict1 = await precheckUserConflicts(form.username1.trim(), startIso, endIso);
-      if (conflict1) throw new Error(conflict1);
-
-      const conflict2 = await precheckUserConflicts(form.username2.trim(), startIso, endIso);
-      if (conflict2) throw new Error(conflict2);
-
-      // 2) שמירה
-      if (form.id) {
-        await updateCleaningDuty(form.id, {
-          username1: form.username1.trim(),
-          username2: form.username2.trim(),
-          start_date: startIso,
-          end_date: endIso,
-        });
-      } else {
-        await createCleaningDuty({
-          username1: form.username1.trim(),
-          username2: form.username2.trim(),
-          start_date: startIso,
-          end_date: endIso,
-        });
-      }
-
-      setModalOpen(false);
-      reload();
+      const res = await get_cleaning_duties();                   // get rows from API
+      setRows(res ?? []);                                 // set rows state
     } catch (e: any) {
-      // אם הבקאנד מחזיר 409/400 עם detail — זה יגיע לכאן
-      setFormErr(e?.response?.data?.detail ?? e?.message ?? "שמירה נכשלה");
+      setErr(extractErrorMessage(e) || "Failed to load rows");  // set error message
+      setRows([]);                                              // clear rows
     } finally {
-      setBusySave(false);
+      setLoading(false);                                    // stop loading state
     }
   }
 
-  async function onDelete(id: number) {
-    if (!confirm("למחוק את התורנות?")) return;
+  function resetMode() {    // reset state
+    setMode("none");        // set mode to none
+    setEditingRowId(null);  // clear editing row id
+    setDraft({ name1: "", name2: "", start_date: "", end_date: "" });           // clear draft row
+  }
+
+  function startCreate() {
+    resetMode();                               // reset state
+    setMode("create");                         // set mode to create
+    const initial: CleaningDutyCreate = { name1: "", name2: "", start_date: "", end_date: "" };                   // initial empty row
+    setDraft(initial);                         // set draft to initial empty row
+  }
+
+  function startEdit(row: CleaningDuty) {                   // start editing given row
+    if (!row.id) {                                    // if cannot build row id
+      setErr("Cannot edit: missing PK value(s)");  // set error
+      return;
+    }
+    resetMode();                                   // reset state
+    setMode("edit");                               // set mode to edit
+    setEditingRowId(row.id);                          // set editing row id
+    setDraft(row);                  // set draft to given row
+  }
+
+  async function handleCreate() {                                              // handle create row action  
+    setErr(null);                                                              // clear previous error
     try {
-      await deleteCleaningDuty(id);
-      reload();
+      await create_cleaning_duty(draft);  // create row via API
+      resetMode();                                                             // reset state
+      await loadRows();                                          // reload rows for entity
     } catch (e: any) {
-      alert(e?.response?.data?.detail ?? "מחיקה נכשלה");
+      setErr(extractErrorMessage(e) || "Create failed");                       // set error message on failure
     }
   }
+
+  async function handleSaveEdit() {                                                            // handle save edited row action
+    if (!editingRowId) return;                                              // if no entity or editing row id, do nothing
+    setErr(null);                                                                              // clear previous error
+    try {
+      const payload = { ...draft };                                                            // copy draft to payload
+      await update_cleaning_duty(editingRowId, normalizePayloadForSubmit(payload));  // update row via API
+      resetMode();                                                                             // reset state
+      await loadRows();                                                          // reload rows for entity
+    } catch (e: any) {
+      setErr(extractErrorMessage(e) || "Update failed");                                       // set error message on failure
+    }
+  }
+
+  async function handleDelete(row: CleaningDuty) {                 // handle delete row action
+    if (!row.id) {                                           // if cannot build row id
+      setErr("Cannot delete: missing PK value(s)");       // set error
+      return;
+    }
+    const ok = confirm(`Delete row id=${row.id}?`);          // "confirm deletion" notification
+    if (!ok) return;                                      // if not confirmed, do nothing
+
+    setErr(null);                                         // clear previous error
+    try {
+      await delete_cleaning_duty(row.id);          // delete row via API
+      await loadRows();                     // reload rows for entity
+    } catch (e: any) {
+      setErr(extractErrorMessage(e) || "Delete failed");  // set error message on failure
+    }
+  }
+
+  useEffect(() => {
+    void loadRows();  // load entities on initial mount
+  }, []);
 
   return (
-    <PortalShell title="Cleaning" subtitle="Weekly cleaning duty roster">
-      <Group justify="space-between" mb="md">
-        <div>
-          <Title order={2}>Cleaning Duties</Title>
-          <Text c="dimmed" size="sm">
-            {isManager
-              ? "כמנהל ניקיון אתה יכול להוסיף/לערוך/למחוק תורנויות."
-              : "אין לך הרשאות עריכה — אתה יכול רק לצפות."}
-          </Text>
-        </div>
-
-        <Group>
-          <Button variant="light" onClick={reload} disabled={loading}>
-            Refresh
+    <PortalShell title="Cleaning Duties" subtitle="Weekly cleaning duty roster">
+      <Group>
+        {isManager && (
+          <Button leftSection={<IconPlus size={16} />} onClick={startCreate}>
+            Add duty
           </Button>
-
-          {isManager && (
-            <Button leftSection={<IconPlus size={16} />} onClick={openCreate}>
-              Add duty
-            </Button>
-          )}
-        </Group>
+        )}
       </Group>
-
       {loading && <Loader />}
       {err && <Alert color="red">{String(err)}</Alert>}
 
@@ -200,97 +134,177 @@ export default function CleaningPage() {
           <Table striped highlightOnHover withTableBorder withColumnBorders>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>username1</Table.Th>
-                <Table.Th>username2</Table.Th>
-                <Table.Th>start_date</Table.Th>
-                <Table.Th>end_date</Table.Th>
+                <Table.Th>1st Name</Table.Th>
+                <Table.Th>2nd Name</Table.Th>
+                <Table.Th>Start Date</Table.Th>
+                <Table.Th>End Date</Table.Th>
                 {isManager && <Table.Th w={120}>actions</Table.Th>}
               </Table.Tr>
             </Table.Thead>
 
             <Table.Tbody>
-              {sorted.length === 0 ? (
+              {mode === "create" && (
+                <Table.Tr>
+                  <Table.Td key={"name1"}>
+                    <TextInput
+                      value={draft.name1}
+                      placeholder={`Edit name1`}
+                      onChange={(e) => {
+                        const value = e.currentTarget.value;
+                        setDraft((d) => ({ ...d, name1: value }));
+                      }}
+                      size="xs"
+                    />
+                  </Table.Td>
+                  <Table.Td key={"name2"}>
+                    <TextInput
+                      value={draft.name2}
+                      placeholder={`Edit name2`}
+                      onChange={(e) => {
+                        const value = e.currentTarget.value;
+                        setDraft((d) => ({ ...d, name2: value }));
+                      }}
+                      size="xs"
+                    />
+                  </Table.Td>
+                  <Table.Td key={"start_date"}>
+                    <TextInput
+                      value={draft.start_date}
+                      placeholder={`Edit start date`}
+                      onChange={(e) => {
+                        const value = e.currentTarget.value;
+                        setDraft((d) => ({ ...d, start_date: value }));
+                      }}
+                      size="xs"
+                    />
+                  </Table.Td>
+                  <Table.Td key={"end_date"}>
+                    <TextInput
+                      value={draft.end_date}
+                      placeholder={`Edit end date`}
+                      onChange={(e) => {
+                        const value = e.currentTarget.value;
+                        setDraft((d) => ({ ...d, end_date: value }));
+                      }}
+                      size="xs"
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <Group gap="xs">
+                      <Button size="xs" onClick={handleCreate}>
+                        Create
+                      </Button>
+                      <Button size="xs" variant="light" onClick={resetMode}>
+                        Cancel
+                      </Button>
+                    </Group>
+                  </Table.Td>
+                </Table.Tr>
+              )}
+
+              {sorted_rows.length === 0 ? (
                 <Table.Tr>
                   <Table.Td colSpan={isManager ? 5 : 4}>
-                    <Text c="dimmed">אין תורנויות עדיין.</Text>
+                    <Text c="dimmed">No duties yet.</Text>
                   </Table.Td>
                 </Table.Tr>
               ) : (
-                sorted.map((row) => (
-                  <Table.Tr key={row.id}>
-                    <Table.Td>{row.username1}</Table.Td>
-                    <Table.Td>{row.username2}</Table.Td>
-                    <Table.Td>{toDateOnly(row.start_date)}</Table.Td>
-                    <Table.Td>{toDateOnly(row.end_date)}</Table.Td>
-
-                    {isManager && (
+                sorted_rows.map((row) => {
+                  const isEditing = mode === "edit" && row.id !== null && row.id === editingRowId;
+                  return (
+                    <Table.Tr key={row.id}>
                       <Table.Td>
-                        <Group gap="xs">
-                          <ActionIcon variant="light" onClick={() => openEdit(row)}>
-                            <IconPencil size={16} />
-                          </ActionIcon>
-                          <ActionIcon color="red" variant="light" onClick={() => onDelete(row.id)}>
-                            <IconTrash size={16} />
-                          </ActionIcon>
-                        </Group>
+                        {isEditing ? (
+                          <TextInput
+                            type="text"
+                            value={draft.name1 ?? ""}
+                            onChange={(e) => {
+                              const value = e.currentTarget.value;
+                              setDraft((d) => ({ ...d, name1: value }));
+                            }}
+                            size="xs"
+                          />
+                        ) : ( row.name1 )}
                       </Table.Td>
-                    )}
-                  </Table.Tr>
-                ))
+                      <Table.Td>
+                        {isEditing ? (
+                          <TextInput
+                            type="text"
+                            value={draft.name2 ?? ""}
+                            onChange={(e) => {
+                              const value = e.currentTarget.value;
+                              setDraft((d) => ({ ...d, name2: value }));
+                            }}
+                            size="xs"
+                          />
+                        ) : ( row.name2 )}
+                      </Table.Td>
+                      <Table.Td>
+                        {isEditing ? (
+                          <TextInput
+                            type="text"
+                            value={draft.start_date ?? ""}
+                            onChange={(e) => {
+                              const value = e.currentTarget.value;
+                              setDraft((d) => ({ ...d, start_date: value }));
+                            }}
+                            size="xs"
+                          />
+                        ) : ( row.start_date?.toLocaleString() )}
+                      </Table.Td>
+                      <Table.Td>
+                        {isEditing ? (
+                          <TextInput
+                            type="text"
+                            value={draft.end_date ?? ""}
+                            onChange={(e) => {
+                              const value = e.currentTarget.value;
+                              setDraft((d) => ({ ...d, end_date: value }));
+                            }}
+                            size="xs"
+                          />
+                        ) : ( row.end_date?.toLocaleString() )}
+                      </Table.Td>
+
+                      {isManager && row.id !== null && (
+                        <Table.Td>
+                          {isEditing ? (
+                            <Group gap="xs">
+                              <Button size="xs" onClick={handleSaveEdit}>
+                                Save
+                              </Button>
+                              <Button size="xs" variant="light" onClick={resetMode}>
+                                Cancel
+                              </Button>
+                            </Group>
+                          ) : (
+                            <Group gap="xs">
+                              <ActionIcon variant="light" onClick={() => startEdit(row)}>
+                                <IconPencil size={16} />
+                              </ActionIcon>
+                              <ActionIcon
+                                color="red"
+                                variant="light"
+                                onClick={() => {
+                                  if (row.id !== null) {
+                                    handleDelete(row);
+                                  }
+                                }}
+                              >
+                                <IconTrash size={16} />
+                              </ActionIcon>
+                            </Group>
+                          )}
+                        </Table.Td>
+                      )}
+                    </Table.Tr>
+                  );
+                })
               )}
             </Table.Tbody>
           </Table>
         </Card>
       )}
-
-      <Modal
-        opened={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={form.id ? "Edit duty" : "Add duty"}
-        centered
-      >
-        <Stack>
-          {formErr && <Alert color="red">{formErr}</Alert>}
-
-          <TextInput
-            label="username1"
-            placeholder="e.g. adam sin"
-            value={form.username1}
-            onChange={(e) => setForm((f) => ({ ...f, username1: e.target.value }))}
-          />
-
-          <TextInput
-            label="username2"
-            placeholder="e.g. john doe"
-            value={form.username2}
-            onChange={(e) => setForm((f) => ({ ...f, username2: e.target.value }))}
-          />
-
-          <DatePickerInput
-            type="range"
-            value={form.range}
-            onChange={(range) =>
-              setForm((f) => ({
-                ...f,
-                range: range ?? [null, null],
-              }))
-            }
-          />
-
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={onSave} loading={busySave}>
-              Save
-            </Button>
-          </Group>
-
-          <Text size="xs" c="dimmed">
-            הערה: גם הבקאנד צריך לאכוף את בדיקת ההתנגשות (UserEvent), כדי שלא יעקפו את זה.
-          </Text>
-        </Stack>
-      </Modal>
     </PortalShell>
   );
 }

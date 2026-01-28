@@ -8,7 +8,8 @@ from datetime import datetime
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from src.db import get_db
 from src.entities.system_error import SystemError
 from src.entities.user import User
@@ -35,6 +36,7 @@ class LoginResult(BaseModel):
     t_name: str
     name: str
     team_name: str | None
+    roles: list[str] | None
     release_date: datetime | None
     access_token: str
     token_type: str = "bearer"
@@ -47,7 +49,13 @@ async def login(payload: LoginIn, db: AsyncSession = Depends(get_db)):
     if not t_name or not password:
         raise SystemError(400, "Send {t_name} and {password}")
 
-    user = await db.get(User, t_name)
+    stmt = (
+        select(User)
+        .options(selectinload(User.roles))
+        .where(User.t_name == t_name)
+    )
+    res = await db.execute(stmt)
+    user = res.scalar_one_or_none()
     if not user:
         raise SystemError(401, "User not found")
 
@@ -59,6 +67,7 @@ async def login(payload: LoginIn, db: AsyncSession = Depends(get_db)):
         t_name=user.t_name,
         name=user.name,
         team_name=user.team_name,
+        roles=[r.name for r in user.roles],
         release_date=user.release_date,
         access_token=token,
     )
