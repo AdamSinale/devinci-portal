@@ -6,8 +6,8 @@ import { getUserUpdates, postUserUpdate } from "../../api/http";
 import type { UserUpdate } from "../../api/http";
 import { get_row_dates, UpdatesPanel, closest_upcoming_updates, recent_ended_updates } from "./UpdatesPanels";
 import type { UpdateRow } from "./UpdatesPanels";
-import { extractErrorMessage } from "../../api/utils";
-import { useAuth } from "../../AuthContext";
+import { extractErrorMessage } from "../../utils/utils";
+import { useAuth } from "../../utils/AuthContext";
 
 type NewUpdate = {
   user_t_name: string;

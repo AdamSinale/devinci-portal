@@ -13,9 +13,9 @@ import {
 import { IconPlus, IconPencil, IconTrash } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 import PortalShell from "../components/PortalShell";
-import { useAuth } from "../../AuthContext";
+import { useAuth } from "../../utils/AuthContext";
 import { type CleaningDuty, type CleaningDutyCreate, create_cleaning_duty, delete_cleaning_duty, get_cleaning_duties, update_cleaning_duty } from "../../api/http";
-import { extractErrorMessage, normalizePayloadForSubmit } from "../../api/utils";
+import { extractErrorMessage, normalizePayloadForSubmit } from "../../utils/utils";
 
 export default function CleaningPage() {
   const { user } = useAuth();

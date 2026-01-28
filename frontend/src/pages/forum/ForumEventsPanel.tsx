@@ -2,7 +2,7 @@ import { Alert, Card, Group, Loader, Stack, Text } from "@mantine/core";
 import { getFutureForumSchedule  } from "../../api/http";
 import type { ForumScheduleItem  } from "../../api/http";
 import { useAsync } from "../components/handlers";
-import { convert_iso_to_Date_string } from "../../api/dates_utils";
+import { convert_iso_to_Date_string } from "../../utils/dates_utils";
 
 export default function EventsPanel() {
   const { data, loading, err, reload } = useAsync<ForumScheduleItem[]>(

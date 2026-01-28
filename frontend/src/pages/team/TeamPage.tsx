@@ -6,8 +6,8 @@ import { getTeamsLinks, postLink } from "../../api/http";
 import type { TeamLink } from "../../api/http";
 import PortalShell from "../components/PortalShell";
 import { useEffect, useState } from "react";
-import { useAuth } from "../../AuthContext";
-import { extractErrorMessage } from "../../api/utils";
+import { useAuth } from "../../utils/AuthContext";
+import { extractErrorMessage } from "../../utils/utils";
 
 type NewLink = {
   link: string;

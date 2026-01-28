@@ -13,7 +13,7 @@ import {
 
 import { getAdminEntities, getAdminRows, createAdminRow, updateAdminRow, deleteAdminRow } from "../../api/admin";
 import PortalShell from "../components/PortalShell";
-import { extractErrorMessage, formatCell, normalizePayloadForSubmit, mapRowForEdit } from "../../api/utils";
+import { extractErrorMessage, formatCell, normalizePayloadForSubmit, mapRowForEdit } from "../../utils/utils";
 import type { Row, Mode } from "../../api/admin";
 
 export default function AdminPage() {

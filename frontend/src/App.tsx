@@ -21,7 +21,7 @@ import UpdatesPage from "./pages/updates/UpdatesPage";
 import GalleryPage from "./pages/gallery/GalleryPage";
 
 import LoginPage from "./LoginPage";
-import { AuthProvider, useAuth } from "./AuthContext";
+import { AuthProvider, useAuth } from "./utils/AuthContext";
 
 export default function RequireAuth({ children }: { children: JSX.Element }) {
   const { user } = useAuth();                          // gets user from auth context

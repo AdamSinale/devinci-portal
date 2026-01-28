@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Alert, Button, Card, Container, PasswordInput, Stack, TextInput, Title } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import { login } from "./api/auth";
-import { useAuth } from "./AuthContext";
+import { useAuth } from "./utils/AuthContext";
 
 export default function LoginPage() {
   const [tName, setTName] = useState("");

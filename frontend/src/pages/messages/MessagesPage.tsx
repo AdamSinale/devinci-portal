@@ -13,8 +13,8 @@ import PortalShell from "../components/PortalShell";
 import { useAsync } from "../components/handlers";
 import { getMessages, postMessage } from "../../api/http";
 import type { Message } from "../../api/http";
-import { extractErrorMessage } from "../../api/utils";
-import { useAuth } from "../../AuthContext";
+import { extractErrorMessage } from "../../utils/utils";
+import { useAuth } from "../../utils/AuthContext";
 
 type NewMessage = {
   title: string;

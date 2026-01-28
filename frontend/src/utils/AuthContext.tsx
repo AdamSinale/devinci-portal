@@ -5,8 +5,8 @@ import React, {
   useMemo,        // dont create new object each render unless dependencies change
   useState 
 } from "react";
-import type { LoginResult } from "./api/auth";
-import { logout as apiLogout } from "./api/auth";
+import type { LoginResult } from "../api/auth";
+import { logout as apiLogout } from "../api/auth";
 
 type AuthState = {             // interface for auth context
   user: LoginResult | null;         // current user or null if not logged in
