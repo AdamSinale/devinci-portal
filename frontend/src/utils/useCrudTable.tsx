@@ -3,19 +3,40 @@ import { extractErrorMessage, normalizePayloadForSubmit } from "./utils";
 
 export type CrudMode = "none" | "create" | "edit";
 
-export type CrudApi<TItem, TCreate, TUpdate, TId> = {
+export type CrudApi<
+  TItem,
+  TCreate extends Record<string, any>,
+  TUpdate extends Record<string, any>,
+  TId
+> = {
   list: () => Promise<TItem[]>;
   create: (payload: TCreate) => Promise<any>;
   update: (id: TId, payload: TUpdate) => Promise<any>;
   remove: (id: TId) => Promise<any>;
-  getId: (row: TItem) => TId | null;          // איך מזהים שורה
-  toDraftForEdit?: (row: TItem) => TCreate;   // ברירת מחדל: cast פשוט
+
+  getId: (row: TItem) => TId | null;
+
+  // איך להפוך row לדראפט לעריכה (ברירת מחדל: cast)
+  toDraftForEdit?: (row: TItem) => TCreate;
+
+  // איך להפוך draft לפיילואד update (למשל למחוק PKs)
+  makeUpdatePayload?: (draft: TCreate, rowBeingEdited?: TItem) => TUpdate;
 };
 
-export function useCrudTable<TItem, TCreate, TUpdate, TId>(
+type CrudOptions<TItem> = {
+  autoLoad?: boolean;
+  confirmDelete?: (row: TItem) => boolean;
+};
+
+export function useCrudTable<
+  TItem,
+  TCreate extends Record<string, any>,
+  TUpdate extends Record<string, any>,
+  TId
+>(
   api: CrudApi<TItem, TCreate, TUpdate, TId>,
   initialDraft: TCreate,
-  options?: { autoLoad?: boolean }
+  options?: CrudOptions<TItem>
 ) {
   const [rows, setRows] = useState<TItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -23,11 +44,13 @@ export function useCrudTable<TItem, TCreate, TUpdate, TId>(
 
   const [mode, setMode] = useState<CrudMode>("none");
   const [editingId, setEditingId] = useState<TId | null>(null);
+  const [editingRow, setEditingRow] = useState<TItem | null>(null);
   const [draft, setDraft] = useState<TCreate>(initialDraft);
 
   const resetMode = useCallback(() => {
     setMode("none");
     setEditingId(null);
+    setEditingRow(null);
     setDraft(initialDraft);
   }, [initialDraft]);
 
@@ -51,22 +74,27 @@ export function useCrudTable<TItem, TCreate, TUpdate, TId>(
     setDraft(initialDraft);
   }, [resetMode, initialDraft]);
 
-  const startEdit = useCallback((row: TItem) => {
-    const id = api.getId(row);
-    if (id === null || id === undefined) {
-      setErr("Cannot edit: missing id/PK");
-      return;
-    }
-    resetMode();
-    setMode("edit");
-    setEditingId(id);
-    setDraft(api.toDraftForEdit ? api.toDraftForEdit(row) : (row as unknown as TCreate));
-  }, [api, resetMode]);
+  const startEdit = useCallback(
+    (row: TItem) => {
+      const id = api.getId(row);
+      if (id === null || id === undefined) {
+        setErr("Cannot edit: missing id/PK");
+        return;
+      }
+      resetMode();
+      setMode("edit");
+      setEditingId(id);
+      setEditingRow(row);
+      setDraft(api.toDraftForEdit ? api.toDraftForEdit(row) : (row as unknown as TCreate));
+    },
+    [api, resetMode]
+  );
 
   const create = useCallback(async () => {
     setErr(null);
     try {
-      await api.create(normalizePayloadForSubmit(draft) as any);
+      const payload = normalizePayloadForSubmit(draft) as TCreate;
+      await api.create(payload);
       resetMode();
       await load();
     } catch (e: any) {
@@ -78,31 +106,43 @@ export function useCrudTable<TItem, TCreate, TUpdate, TId>(
     if (editingId === null || editingId === undefined) return;
     setErr(null);
     try {
-      await api.update(editingId, normalizePayloadForSubmit(draft) as any);
+      const base = normalizePayloadForSubmit(draft) as TCreate;
+      const payload = api.makeUpdatePayload
+        ? api.makeUpdatePayload(base, editingRow ?? undefined)
+        : (base as unknown as TUpdate);
+
+      await api.update(editingId, payload);
       resetMode();
       await load();
     } catch (e: any) {
       setErr(extractErrorMessage(e) || "Update failed");
     }
-  }, [api, draft, editingId, load, resetMode]);
+  }, [api, draft, editingId, editingRow, load, resetMode]);
 
-  const remove = useCallback(async (row: TItem) => {
-    const id = api.getId(row);
-    if (id === null || id === undefined) {
-      setErr("Cannot delete: missing id/PK");
-      return;
-    }
-    const ok = confirm(`Delete id=${String(id)}?`);
-    if (!ok) return;
+  const remove = useCallback(
+    async (row: TItem) => {
+      const id = api.getId(row);
+      if (id === null || id === undefined) {
+        setErr("Cannot delete: missing id/PK");
+        return;
+      }
 
-    setErr(null);
-    try {
-      await api.remove(id);
-      await load();
-    } catch (e: any) {
-      setErr(extractErrorMessage(e) || "Delete failed");
-    }
-  }, [api, load]);
+      const ok = options?.confirmDelete
+        ? options.confirmDelete(row)
+        : confirm(`Delete id=${String(id)}?`);
+
+      if (!ok) return;
+
+      setErr(null);
+      try {
+        await api.remove(id);
+        await load();
+      } catch (e: any) {
+        setErr(extractErrorMessage(e) || "Delete failed");
+      }
+    },
+    [api, load, options?.confirmDelete]
+  );
 
   useEffect(() => {
     if (options?.autoLoad === false) return;
@@ -110,14 +150,22 @@ export function useCrudTable<TItem, TCreate, TUpdate, TId>(
   }, [load, options?.autoLoad]);
 
   return {
-    // data
-    rows, setRows,
-    loading, err,
+    rows,
+    setRows,
+    loading,
+    err,
 
-    // edit/create state
-    mode, editingId, draft, setDraft,
+    mode,
+    editingId,
+    draft,
+    setDraft,
 
-    // handlers
-    load, resetMode, startCreate, startEdit, create, saveEdit, remove,
+    load,
+    resetMode,
+    startCreate,
+    startEdit,
+    create,
+    saveEdit,
+    remove,
   };
 }
