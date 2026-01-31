@@ -11,125 +11,50 @@ import {
   TextInput,
 } from "@mantine/core";
 import { IconPlus, IconPencil, IconTrash } from "@tabler/icons-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import PortalShell from "../components/PortalShell";
 import { useAuth } from "../../utils/AuthContext";
 import { type CleaningDuty, type CleaningDutyCreate, create_cleaning_duty, delete_cleaning_duty, get_cleaning_duties, update_cleaning_duty } from "../../api/http";
-import { extractErrorMessage, normalizePayloadForSubmit } from "../../utils/utils";
+import { useCrudTable } from "../../utils/useCrudTable";
 
 export default function CleaningPage() {
   const { user } = useAuth();
   const isManager = !!user?.roles?.includes("cleaning manager");
 
-  const [rows, setRows] = useState<CleaningDuty[]>([]);                              // rows for selected entity
-  const [loading, setLoading] = useState(false);                    // loading state for rows, false until changing entity
-  const [err, setErr] = useState<string | null>(null);                      // error message, if any
-
-  const [mode, setMode] = useState<"none" | "create" | "edit">("none");     // current mode: none, create, edit
-  const [editingRowId, setEditingRowId] = useState<number | null>(null);    // row id being edited
   const [draft, setDraft] = useState<CleaningDutyCreate>({ name1: "", name2: "", start_date: "", end_date: "" });                              // draft row created/edited (object textInputs read/write)
 
+  const api = {
+    list: get_cleaning_duties,
+    create: create_cleaning_duty,
+    update: (id: number, payload: CleaningDutyCreate) => update_cleaning_duty(id, payload),
+    remove: delete_cleaning_duty,
+    getId: (row: CleaningDuty) => row.id ?? null,
+  };
+
+  const crud = useCrudTable<CleaningDuty, CleaningDutyCreate, CleaningDutyCreate, number>(
+    api,
+    { name1: "", name2: "", start_date: "", end_date: "" }
+  );
+
   const sorted_rows = useMemo(() => {
-    rows.sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
-    return rows;
-  }, [rows]);
-
-  async function loadRows() {                     // load rows for given entity
-    setErr(null);                                               // removes previous error
-    setLoading(true);                                       // set loading state
-    try {
-      const res = await get_cleaning_duties();                   // get rows from API
-      setRows(res ?? []);                                 // set rows state
-    } catch (e: any) {
-      setErr(extractErrorMessage(e) || "Failed to load rows");  // set error message
-      setRows([]);                                              // clear rows
-    } finally {
-      setLoading(false);                                    // stop loading state
-    }
-  }
-
-  function resetMode() {    // reset state
-    setMode("none");        // set mode to none
-    setEditingRowId(null);  // clear editing row id
-    setDraft({ name1: "", name2: "", start_date: "", end_date: "" });           // clear draft row
-  }
-
-  function startCreate() {
-    resetMode();                               // reset state
-    setMode("create");                         // set mode to create
-    const initial: CleaningDutyCreate = { name1: "", name2: "", start_date: "", end_date: "" };                   // initial empty row
-    setDraft(initial);                         // set draft to initial empty row
-  }
-
-  function startEdit(row: CleaningDuty) {                   // start editing given row
-    if (!row.id) {                                    // if cannot build row id
-      setErr("Cannot edit: missing PK value(s)");  // set error
-      return;
-    }
-    resetMode();                                   // reset state
-    setMode("edit");                               // set mode to edit
-    setEditingRowId(row.id);                          // set editing row id
-    setDraft(row);                  // set draft to given row
-  }
-
-  async function handleCreate() {                                              // handle create row action  
-    setErr(null);                                                              // clear previous error
-    try {
-      await create_cleaning_duty(draft);  // create row via API
-      resetMode();                                                             // reset state
-      await loadRows();                                          // reload rows for entity
-    } catch (e: any) {
-      setErr(extractErrorMessage(e) || "Create failed");                       // set error message on failure
-    }
-  }
-
-  async function handleSaveEdit() {                                                            // handle save edited row action
-    if (!editingRowId) return;                                              // if no entity or editing row id, do nothing
-    setErr(null);                                                                              // clear previous error
-    try {
-      const payload = { ...draft };                                                            // copy draft to payload
-      await update_cleaning_duty(editingRowId, normalizePayloadForSubmit(payload));  // update row via API
-      resetMode();                                                                             // reset state
-      await loadRows();                                                          // reload rows for entity
-    } catch (e: any) {
-      setErr(extractErrorMessage(e) || "Update failed");                                       // set error message on failure
-    }
-  }
-
-  async function handleDelete(row: CleaningDuty) {                 // handle delete row action
-    if (!row.id) {                                           // if cannot build row id
-      setErr("Cannot delete: missing PK value(s)");       // set error
-      return;
-    }
-    const ok = confirm(`Delete row id=${row.id}?`);          // "confirm deletion" notification
-    if (!ok) return;                                      // if not confirmed, do nothing
-
-    setErr(null);                                         // clear previous error
-    try {
-      await delete_cleaning_duty(row.id);          // delete row via API
-      await loadRows();                     // reload rows for entity
-    } catch (e: any) {
-      setErr(extractErrorMessage(e) || "Delete failed");  // set error message on failure
-    }
-  }
-
-  useEffect(() => {
-    void loadRows();  // load entities on initial mount
-  }, []);
+    return [...crud.rows].sort(
+      (a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
+    );
+  }, [crud.rows]);
 
   return (
     <PortalShell title="Cleaning Duties" subtitle="Weekly cleaning duty roster">
       <Group>
         {isManager && (
-          <Button leftSection={<IconPlus size={16} />} onClick={startCreate}>
+          <Button leftSection={<IconPlus size={16} />} onClick={crud.startCreate}>
             Add duty
           </Button>
         )}
       </Group>
-      {loading && <Loader />}
-      {err && <Alert color="red">{String(err)}</Alert>}
+      {crud.loading && <Loader />}
+      {crud.err && <Alert color="red">{String(crud.err)}</Alert>}
 
-      {!loading && !err && (
+      {!crud.loading && !crud.err && (
         <Card withBorder radius="md" p="lg">
           <Table striped highlightOnHover withTableBorder withColumnBorders>
             <Table.Thead>
@@ -143,7 +68,7 @@ export default function CleaningPage() {
             </Table.Thead>
 
             <Table.Tbody>
-              {mode === "create" && (
+              {crud.mode === "create" && (
                 <Table.Tr>
                   <Table.Td key={"name1"}>
                     <TextInput
@@ -191,10 +116,10 @@ export default function CleaningPage() {
                   </Table.Td>
                   <Table.Td>
                     <Group gap="xs">
-                      <Button size="xs" onClick={handleCreate}>
+                      <Button size="xs" onClick={crud.create}>
                         Create
                       </Button>
-                      <Button size="xs" variant="light" onClick={resetMode}>
+                      <Button size="xs" variant="light" onClick={crud.resetMode}>
                         Cancel
                       </Button>
                     </Group>
@@ -210,7 +135,7 @@ export default function CleaningPage() {
                 </Table.Tr>
               ) : (
                 sorted_rows.map((row) => {
-                  const isEditing = mode === "edit" && row.id !== null && row.id === editingRowId;
+                  const isEditing = crud.mode === "edit" && row.id !== null && row.id === crud.editingId;
                   return (
                     <Table.Tr key={row.id}>
                       <Table.Td>
@@ -270,16 +195,16 @@ export default function CleaningPage() {
                         <Table.Td>
                           {isEditing ? (
                             <Group gap="xs">
-                              <Button size="xs" onClick={handleSaveEdit}>
+                              <Button size="xs" onClick={crud.saveEdit}>
                                 Save
                               </Button>
-                              <Button size="xs" variant="light" onClick={resetMode}>
+                              <Button size="xs" variant="light" onClick={crud.resetMode}>
                                 Cancel
                               </Button>
                             </Group>
                           ) : (
                             <Group gap="xs">
-                              <ActionIcon variant="light" onClick={() => startEdit(row)}>
+                              <ActionIcon variant="light" onClick={() => crud.startEdit(row)}>
                                 <IconPencil size={16} />
                               </ActionIcon>
                               <ActionIcon
@@ -287,7 +212,7 @@ export default function CleaningPage() {
                                 variant="light"
                                 onClick={() => {
                                   if (row.id !== null) {
-                                    handleDelete(row);
+                                    crud.remove(row);
                                   }
                                 }}
                               >
